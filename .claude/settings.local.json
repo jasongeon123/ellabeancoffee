@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(npm install)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run db:seed:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(taskkill:*)",
+      "Bash(dir:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(del C:UsersgeonJgithubellabeancoffeecomponentsLocationMap.tsx)",
+      "Bash(npx prisma:*)",
+      "Bash(rd /s /q \".next\")",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd //c \"taskkill /F /PID 14132 & taskkill /F /PID 21552 & taskkill /F /PID 18528 & taskkill /F /PID 28140 & taskkill /F /PID 19444 & taskkill /F /PID 45712 & taskkill /F /PID 44312 & taskkill /F /PID 44260\")",
+      "Bash(npm run build:*)",
+      "Bash(npm start)",
+      "Bash(curl:*)",
+      "Bash(node test-approve.js)",
+      "Bash(node test-delete.js:*)",
+      "Bash(node test-add-fifth.js:*)",
+      "Bash(node test-delete-all-testimonials.js:*)",
+      "Bash(NUL)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

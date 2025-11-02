@@ -1,0 +1,158 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  password      String
+  role          String         @default("user") // user or admin
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  cart          Cart?
+  orders        Order[]
+  reviews       Review[]
+  subscriptions Subscription[]
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  image       String
+  category    String
+  inStock     Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  reviews     Review[]
+
+  @@index([inStock])
+  @@index([category])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  items      OrderItem[]
+  total      Float
+  status     String      @default("pending") // pending, completed, cancelled
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+}
+
+model Location {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  address     String
+  date        DateTime
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Analytics {
+  id         String   @id @default(cuid())
+  path       String
+  userAgent  String?
+  ip         String?
+  timestamp  DateTime @default(now())
+}
+
+model Image {
+  id          String   @id @default(cuid())
+  filename    String   @unique
+  originalName String
+  path        String
+  size        Int
+  mimeType    String
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int      // 1-5 stars
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, userId]) // One review per user per product
+}
+
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId         String   // The product they're subscribing to
+  stripeSubscriptionId String? @unique
+  status            String   @default("active") // active, paused, cancelled
+  frequency         String   // weekly, biweekly, monthly
+  nextDeliveryDate  DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  rating    Int      // 1-5 stars
+  comment   String
+  approved  Boolean  @default(false) // Requires admin approval before display
+  featured  Boolean  @default(false) // Highlight on homepage
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([approved])
+  @@index([featured])
+}
