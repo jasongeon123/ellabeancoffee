@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import PageTransition from "@/components/PageTransition";
 import ProgressBar from "@/components/ProgressBar";
 import Footer from "@/components/Footer";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -91,6 +92,7 @@ export default function RootLayout({
           <PageTransition>{children}</PageTransition>
           <Footer />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
