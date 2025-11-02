@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 
 export default async function AccountPage() {
   const session = await getServerSession(authOptions);
@@ -85,6 +86,15 @@ export default async function AccountPage() {
                   <p className="text-xs text-coffee-500 uppercase tracking-wider mb-1">Total Orders</p>
                   <p className="text-coffee-900 font-light">{orders.length}</p>
                 </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-coffee-100">
+                <Link
+                  href="/account/change-password"
+                  className="block w-full text-center px-4 py-2 bg-coffee-600 text-white rounded-lg hover:bg-coffee-700 transition-colors"
+                >
+                  Change Password
+                </Link>
               </div>
             </div>
           </div>
