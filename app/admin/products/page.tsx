@@ -6,6 +6,7 @@ import Image from "next/image";
 import ProductForm from "@/components/ProductForm";
 import DeleteProductButton from "@/components/DeleteProductButton";
 import EditProductButton from "@/components/EditProductButton";
+import ToggleStockButton from "@/components/ToggleStockButton";
 
 export default async function AdminProducts() {
   const session = await getServerSession(authOptions);
@@ -62,10 +63,13 @@ export default async function AdminProducts() {
                   <p className="text-coffee-900 font-medium mt-2">
                     ${product.price.toFixed(2)}
                   </p>
-                  <p className="text-coffee-600 text-sm">
-                    Category: {product.category} | Stock:{" "}
-                    {product.inStock ? "In Stock" : "Out of Stock"}
+                  <p className="text-coffee-600 text-sm mb-2">
+                    Category: {product.category}
                   </p>
+                  <ToggleStockButton
+                    productId={product.id}
+                    inStock={product.inStock}
+                  />
                 </div>
                 <div className="flex gap-2">
                   <EditProductButton product={product} />

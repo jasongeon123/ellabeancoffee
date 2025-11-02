@@ -14,6 +14,8 @@ export default function ProductForm() {
     category: "",
     image: "",
     inStock: true,
+    stockQuantity: "",
+    lowStockAlert: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,6 +29,8 @@ export default function ProductForm() {
         body: JSON.stringify({
           ...formData,
           price: parseFloat(formData.price),
+          stockQuantity: formData.stockQuantity ? parseInt(formData.stockQuantity) : null,
+          lowStockAlert: formData.lowStockAlert ? parseInt(formData.lowStockAlert) : null,
         }),
       });
 
@@ -38,6 +42,8 @@ export default function ProductForm() {
           category: "",
           image: "",
           inStock: true,
+          stockQuantity: "",
+          lowStockAlert: "",
         });
         router.refresh();
       }
@@ -124,6 +130,39 @@ export default function ProductForm() {
             onChange={(e) => setFormData({ ...formData, image: e.target.value })}
             className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500 mt-2"
             placeholder="Or enter path manually: /1.jpg"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-coffee-900 mb-2">
+            Stock Quantity (optional)
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={formData.stockQuantity}
+            onChange={(e) =>
+              setFormData({ ...formData, stockQuantity: e.target.value })
+            }
+            className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500"
+            placeholder="Leave empty for unlimited"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-coffee-900 mb-2">
+            Low Stock Alert (optional)
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={formData.lowStockAlert}
+            onChange={(e) =>
+              setFormData({ ...formData, lowStockAlert: e.target.value })
+            }
+            className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500"
+            placeholder="Alert when below this number"
           />
         </div>
       </div>

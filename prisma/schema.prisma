@@ -31,6 +31,8 @@ model Product {
   image       String
   category    String
   inStock     Boolean     @default(true)
+  stockQuantity Int?      // Inventory count (null = unlimited)
+  lowStockAlert Int?      // Alert when stock falls below this number
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   cartItems   CartItem[]
@@ -155,4 +157,34 @@ model Testimonial {
 
   @@index([approved])
   @@index([featured])
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([read])
+  @@index([createdAt])
+}
+
+model Coupon {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  discountPercent Int?    // Percentage discount (e.g., 20 for 20% off)
+  discountAmount Float?   // Fixed amount discount
+  minPurchase Float?    // Minimum purchase amount required
+  maxUses     Int?      // Maximum number of times this can be used
+  usedCount   Int      @default(0)
+  active      Boolean  @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([code])
+  @@index([active])
 }

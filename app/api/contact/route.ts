@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { prisma } from "@/lib/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -14,6 +15,16 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    // Save to database
+    await prisma.contactSubmission.create({
+      data: {
+        name,
+        email,
+        subject,
+        message,
+      },
+    });
 
     // Send email using Resend
     const { data, error } = await resend.emails.send({
