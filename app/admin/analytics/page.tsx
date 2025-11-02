@@ -10,19 +10,30 @@ export default async function AnalyticsPage() {
     redirect("/");
   }
 
-  // Get all analytics
-  const allAnalytics = await prisma.analytics.findMany({
+  // Get total count
+  const totalPageViews = await prisma.analytics.count();
+
+  // Get recent analytics for display
+  const recentAnalytics = await prisma.analytics.findMany({
     orderBy: { timestamp: "desc" },
     take: 100,
   });
 
-  // Group by path
+  // Get ALL analytics for accurate stats (grouped by path)
+  const allAnalytics = await prisma.analytics.findMany({
+    select: {
+      path: true,
+      timestamp: true,
+    },
+  });
+
+  // Group by path (all time)
   const pageViews = allAnalytics.reduce((acc, item) => {
     acc[item.path] = (acc[item.path] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // Group by date
+  // Group by date (all time)
   const viewsByDate = allAnalytics.reduce((acc, item) => {
     const date = new Date(item.timestamp).toLocaleDateString();
     acc[date] = (acc[date] || 0) + 1;
@@ -42,7 +53,10 @@ export default async function AnalyticsPage() {
             Total Page Views
           </h2>
           <p className="text-5xl font-light text-coffee-900">
-            {allAnalytics.length}
+            {totalPageViews.toLocaleString()}
+          </p>
+          <p className="text-sm text-coffee-600 mt-2">
+            Showing recent 100 below
           </p>
         </div>
 
@@ -103,10 +117,10 @@ export default async function AnalyticsPage() {
         {/* Recent Activity */}
         <div className="bg-white border border-coffee-200 p-6">
           <h2 className="text-2xl font-light text-coffee-900 mb-6">
-            Recent Activity
+            Recent Activity (Last 20)
           </h2>
           <div className="space-y-3">
-            {allAnalytics.slice(0, 20).map((item) => (
+            {recentAnalytics.slice(0, 20).map((item) => (
               <div
                 key={item.id}
                 className="flex justify-between items-start border-b border-coffee-100 pb-3"
@@ -124,7 +138,7 @@ export default async function AnalyticsPage() {
                 </p>
               </div>
             ))}
-            {allAnalytics.length === 0 && (
+            {recentAnalytics.length === 0 && (
               <p className="text-coffee-600 text-center py-4">
                 No activity recorded yet
               </p>
