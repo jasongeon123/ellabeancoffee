@@ -5,7 +5,7 @@ A modern, clean coffee shop web application inspired by Blue Bottle Coffee. Feat
 ## Features
 
 ### Customer Features
-- 🎨 Clean, minimalist design inspired by Blue Bottle Coffee
+- 🎨 Clean, minimalist design inspired
 - 📦 Product catalog with beautiful imagery
 - 📍 Location bulletin board for upcoming events and mobile locations
 - 🛒 Shopping cart with persistent sessions
