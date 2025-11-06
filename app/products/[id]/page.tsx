@@ -12,23 +12,33 @@ import type { Metadata } from "next";
 
 // Generate static paths for all products at build time
 export async function generateStaticParams() {
-  const products = await getAllProducts();
-  return products.map((product) => ({
-    id: product.id,
-  }));
+  try {
+    // Skip static generation if DATABASE_URL is not available (e.g., in CI)
+    if (!process.env.DATABASE_URL) {
+      return [];
+    }
+    const products = await getAllProducts();
+    return products.map((product) => ({
+      id: product.id,
+    }));
+  } catch (error) {
+    console.warn('Failed to generate static params for products:', error);
+    return [];
+  }
 }
 
 // Generate dynamic metadata for each product page
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const product = await getProductById(params.id);
+  try {
+    const product = await getProductById(params.id);
 
-  if (!product) {
-    return {
-      title: "Product Not Found - Ella Bean Coffee",
-    };
-  }
+    if (!product) {
+      return {
+        title: "Product Not Found - Ella Bean Coffee",
+      };
+    }
 
-  const { reviews, averageRating } = await getProductReviews(params.id);
+    const { reviews, averageRating } = await getProductReviews(params.id);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ellabeancoffee.com';
   const productUrl = `${baseUrl}/products/${product.id}`;
 
@@ -71,6 +81,12 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       canonical: productUrl,
     },
   };
+  } catch (error) {
+    console.warn('Failed to generate metadata for product:', error);
+    return {
+      title: "Product - Ella Bean Coffee",
+    };
+  }
 }
 
 // Enable ISR (Incremental Static Regeneration) - revalidate every hour

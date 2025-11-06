@@ -4,15 +4,25 @@ import { prisma } from '@/lib/prisma';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ellabeancoffee.com';
 
-  // Fetch all products
-  const products = await prisma.product.findMany({
-    select: { id: true, slug: true, updatedAt: true },
-  });
+  let products: { id: string; slug: string | null; updatedAt: Date }[] = [];
+  let locations: { id: string; updatedAt: Date }[] = [];
 
-  // Fetch all locations
-  const locations = await prisma.location.findMany({
-    select: { id: true, updatedAt: true },
-  });
+  try {
+    // Skip database queries if DATABASE_URL is not available (e.g., in CI)
+    if (process.env.DATABASE_URL) {
+      // Fetch all products
+      products = await prisma.product.findMany({
+        select: { id: true, slug: true, updatedAt: true },
+      });
+
+      // Fetch all locations
+      locations = await prisma.location.findMany({
+        select: { id: true, updatedAt: true },
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to fetch data for sitemap:', error);
+  }
 
   // Static pages
   const staticPages = [
