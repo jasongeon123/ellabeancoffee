@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
 interface SalesData {
@@ -49,11 +49,7 @@ export default function SalesReportsPage() {
   const [data, setData] = useState<SalesData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, [period, groupBy]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -66,7 +62,11 @@ export default function SalesReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, groupBy]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading || !data) {
     return (

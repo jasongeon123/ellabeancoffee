@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import ReviewForm from "./ReviewForm";
 
@@ -38,7 +38,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
   const [flagReason, setFlagReason] = useState("");
   const [flagging, setFlagging] = useState(false);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       const response = await fetch(`/api/products/${productId}/reviews`);
       if (response.ok) {
@@ -52,11 +52,11 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
 
   useEffect(() => {
     fetchReviews();
-  }, [productId]);
+  }, [fetchReviews]);
 
   const renderStars = (rating: number) => {
     return (

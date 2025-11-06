@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
@@ -49,11 +49,7 @@ export default function AdminReviewsPage() {
     }
   }, [session, status, router]);
 
-  useEffect(() => {
-    fetchReviews();
-  }, [filter]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/admin/reviews?filter=${filter}`);
@@ -64,7 +60,11 @@ export default function AdminReviewsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
 
   const handleStatusChange = async (reviewId: string, newStatus: string) => {
     try {
