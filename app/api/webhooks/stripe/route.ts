@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { generateOrderNumber, addTrackingUpdate } from "@/lib/orderUtils";
@@ -19,6 +19,14 @@ export async function POST(req: Request) {
     // For development, you can skip signature verification
     // In production, add STRIPE_WEBHOOK_SECRET to .env
     if (process.env.STRIPE_WEBHOOK_SECRET) {
+      const stripe = getStripeClient();
+      if (!stripe) {
+        console.error("Stripe client not initialized");
+        return NextResponse.json(
+          { error: "Payment service not configured" },
+          { status: 503 }
+        );
+      }
       event = stripe.webhooks.constructEvent(
         body,
         signature!,

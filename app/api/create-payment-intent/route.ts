@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
@@ -91,6 +91,14 @@ export async function POST(request: NextRequest) {
       }
     } else {
       metadata.guest = "true";
+    }
+
+    const stripe = getStripeClient();
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Payment service not configured" },
+        { status: 503 }
+      );
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
