@@ -11,6 +11,7 @@ import DownScrollSnap from "@/components/DownScrollSnap";
 import { Analytics } from "@vercel/analytics/react";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import FacebookPixel from "@/components/analytics/FacebookPixel";
+import { Suspense } from "react";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -90,8 +91,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={inter.className}>
-        <GoogleAnalytics />
-        <FacebookPixel />
+        <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
+        <Suspense fallback={null}>
+          <FacebookPixel />
+        </Suspense>
         <AuthProvider>
           <CartProvider>
             <DownScrollSnap />
