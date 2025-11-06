@@ -185,7 +185,3 @@ For issues or questions, please check:
 ## License
 
 MIT
-
----
-
-Built with ☕ and Claude Code
