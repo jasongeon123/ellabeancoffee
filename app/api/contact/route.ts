@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { getResendClient } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   try {
@@ -27,6 +25,15 @@ export async function POST(req: Request) {
     });
 
     // Send email using Resend
+    const resend = getResendClient();
+    if (!resend) {
+      console.warn("Resend client not initialized - email not sent");
+      return NextResponse.json(
+        { message: "Message received successfully! We'll get back to you soon." },
+        { status: 200 }
+      );
+    }
+
     const { data, error } = await resend.emails.send({
       from: "Ella Bean Coffee <info@ellabeancoffee.com>", // Your verified domain
       to: ["ellabeancoffee@gmail.com"], // Your email
