@@ -1,11 +1,20 @@
 import { prisma } from "@/lib/prisma";
 
 export default async function BulletinBoard() {
-  const locations = await prisma.location.findMany({
-    where: { active: true },
-    orderBy: { date: "asc" },
-    take: 3,
-  });
+  let locations: any[] = [];
+
+  try {
+    // Skip database query if DATABASE_URL is not available (e.g., in CI)
+    if (process.env.DATABASE_URL) {
+      locations = await prisma.location.findMany({
+        where: { active: true },
+        orderBy: { date: "asc" },
+        take: 3,
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to fetch locations for bulletin board:', error);
+  }
 
   if (locations.length === 0) {
     return null;

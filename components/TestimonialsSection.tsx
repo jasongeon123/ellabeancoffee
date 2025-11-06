@@ -2,14 +2,23 @@ import { prisma } from "@/lib/prisma";
 import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 
 export default async function TestimonialsSection() {
-  // Get approved testimonials (at least 5 required)
-  const testimonials = await prisma.testimonial.findMany({
-    where: { approved: true },
-    orderBy: [
-      { featured: "desc" }, // Featured testimonials first
-      { createdAt: "desc" },
-    ],
-  });
+  let testimonials: any[] = [];
+
+  try {
+    // Skip database query if DATABASE_URL is not available (e.g., in CI)
+    if (process.env.DATABASE_URL) {
+      // Get approved testimonials (at least 5 required)
+      testimonials = await prisma.testimonial.findMany({
+        where: { approved: true },
+        orderBy: [
+          { featured: "desc" }, // Featured testimonials first
+          { createdAt: "desc" },
+        ],
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to fetch testimonials:', error);
+  }
 
   // Don't render if less than 5 approved testimonials
   if (testimonials.length < 5) {

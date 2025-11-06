@@ -1,10 +1,19 @@
 import { prisma } from "@/lib/prisma";
 
 export default async function LocationsPage() {
-  const locations = await prisma.location.findMany({
-    where: { active: true },
-    orderBy: { date: "asc" },
-  });
+  let locations: any[] = [];
+
+  try {
+    // Skip database query if DATABASE_URL is not available (e.g., in CI)
+    if (process.env.DATABASE_URL) {
+      locations = await prisma.location.findMany({
+        where: { active: true },
+        orderBy: { date: "asc" },
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to fetch locations:', error);
+  }
 
   const getGoogleMapsUrl = (address: string) => {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;

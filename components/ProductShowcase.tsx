@@ -2,7 +2,16 @@ import { getProductsWithReviews } from "@/lib/queries";
 import ProductCard from "./ProductCard";
 
 export default async function ProductShowcase() {
-  const productsWithRatings = await getProductsWithReviews();
+  let productsWithRatings: any[] = [];
+
+  try {
+    // Skip database query if DATABASE_URL is not available (e.g., in CI)
+    if (process.env.DATABASE_URL) {
+      productsWithRatings = await getProductsWithReviews();
+    }
+  } catch (error) {
+    console.warn('Failed to fetch products with reviews:', error);
+  }
 
   if (productsWithRatings.length === 0) {
     return (
