@@ -14,8 +14,8 @@ interface Product {
   price: number;
   image: string;
   category: string;
-  roastLevel?: string;
-  origin?: string;
+  roastLevel?: string | null;
+  origin?: string | null;
   inStock: boolean;
   tastingNotes?: string[];
   brewingMethods?: string[];
