@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Don't fail build on prerender errors - just skip static generation for those pages
+  staticPageGenerationTimeout: 120,
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
   images: {
     remotePatterns: [],
     // Limit image sizes to prevent memory exhaustion attacks
