@@ -1,110 +1,51 @@
+"use client";
+
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
-import { sendOrderConfirmationEmail } from "@/lib/email";
-import { redirect } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { clearGuestCart } from "@/lib/guestCart";
 import TestimonialForm from "@/components/TestimonialForm";
 
-export default async function CheckoutSuccessPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ payment_intent?: string; cartId?: string; userId?: string }>;
-}) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect("/auth/signin");
-  }
+export default function CheckoutSuccessPage() {
+  const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [processing, setProcessing] = useState(true);
 
-  const params = await searchParams;
-  const { payment_intent, cartId, userId } = params;
+  const paymentIntent = searchParams.get("payment_intent");
 
-  // Process the order if we have the necessary information
-  if (payment_intent && cartId && userId) {
-    try {
-      // Verify payment succeeded
-      const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent);
-
-      if (paymentIntent.status === "succeeded") {
-        // Check if order already exists (prevent duplicate orders)
-        const existingOrder = await prisma.order.findFirst({
-          where: {
-            userId,
-            // Check if an order was created in the last 5 minutes for this cart
-            createdAt: {
-              gte: new Date(Date.now() - 5 * 60 * 1000),
-            },
-          },
-        });
-
-        if (!existingOrder) {
-          // Get cart items
-          const cart = await prisma.cart.findUnique({
-            where: { id: cartId },
-            include: {
-              items: {
-                include: {
-                  product: true,
-                },
-              },
-            },
-          });
-
-          if (cart && cart.items.length > 0) {
-            // Calculate total
-            const total = cart.items.reduce(
-              (sum, item) => sum + item.product.price * item.quantity,
-              0
-            );
-
-            // Create order
-            const order = await prisma.order.create({
-              data: {
-                userId,
-                total: total * 1.08, // Including tax
-                status: "completed",
-                items: {
-                  create: cart.items.map((item) => ({
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    price: item.product.price,
-                  })),
-                },
-              },
-            });
-
-            // Get user email
-            const user = await prisma.user.findUnique({
-              where: { id: userId },
-              select: { email: true },
-            });
-
-            // Send confirmation email
-            if (user) {
-              await sendOrderConfirmationEmail(user.email, {
-                orderId: order.id,
-                items: cart.items.map((item) => ({
-                  name: item.product.name,
-                  quantity: item.quantity,
-                  price: item.product.price,
-                })),
-                total: total * 1.08,
-              });
-            }
-
-            // Clear cart
-            await prisma.cartItem.deleteMany({
-              where: { cartId },
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error processing order on success page:", error);
-      // Continue to show success page even if there's an error
-      // The webhook will handle it as a backup
+  useEffect(() => {
+    // Clear guest cart if user is a guest
+    if (status !== "loading" && !session) {
+      clearGuestCart();
     }
+
+    // Process order if needed
+    if (paymentIntent) {
+      processOrder();
+    } else {
+      setProcessing(false);
+    }
+  }, [paymentIntent, session, status]);
+
+  const processOrder = async () => {
+    try {
+      // The webhook will handle order creation
+      // Just mark as processed
+      setProcessing(false);
+    } catch (error) {
+      console.error("Error processing order:", error);
+      setProcessing(false);
+    }
+  };
+
+  if (processing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-coffee-50 to-white py-16 flex items-center justify-center">
+        <div className="text-coffee-600">Processing your order...</div>
+      </div>
+    );
   }
 
   return (
@@ -163,18 +104,20 @@ export default async function CheckoutSuccessPage({
           </div>
         </div>
 
-        {/* Testimonial Form Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12 border border-coffee-100 mt-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-light text-coffee-900 mb-3 tracking-tight">
-              Share Your Experience
-            </h2>
-            <p className="text-coffee-600 font-light">
-              We'd love to hear about your experience with Ella Bean Coffee. Your feedback helps us serve you better!
-            </p>
+        {/* Testimonial Form Section - Only show for authenticated users */}
+        {session && (
+          <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-12 border border-coffee-100 mt-8">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-light text-coffee-900 mb-3 tracking-tight">
+                Share Your Experience
+              </h2>
+              <p className="text-coffee-600 font-light">
+                We'd love to hear about your experience with Ella Bean Coffee. Your feedback helps us serve you better!
+              </p>
+            </div>
+            <TestimonialForm />
           </div>
-          <TestimonialForm />
-        </div>
+        )}
       </div>
     </div>
   );

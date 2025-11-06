@@ -16,12 +16,10 @@ const stripePromise = loadStripe(
 
 function PaymentForm({
   amount,
-  cartId,
   userId,
 }: {
   amount: number;
-  cartId: string;
-  userId: string;
+  userId: string | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -54,10 +52,14 @@ function PaymentForm({
         return;
       }
 
+      const returnUrl = userId
+        ? `${window.location.origin}/checkout/success?userId=${userId}`
+        : `${window.location.origin}/checkout/success`;
+
       const { error: confirmError } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/checkout/success?cartId=${cartId}&userId=${userId}`,
+          return_url: returnUrl,
           payment_method_data: {
             billing_details: {
               name,
@@ -150,14 +152,38 @@ function PaymentForm({
   );
 }
 
+interface ShippingAddress {
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  phone: string;
+}
+
 export default function CheckoutForm({
   amount,
-  cartId,
+  subtotal,
+  discount,
+  pointsUsed,
+  couponCode,
   userId,
+  items,
+  shippingAddress,
+  shippingCost,
+  tax,
 }: {
   amount: number;
-  cartId: string;
-  userId: string;
+  subtotal: number;
+  discount: number;
+  pointsUsed?: number;
+  couponCode?: string;
+  userId: string | null;
+  items: { productId: string; quantity: number }[];
+  shippingAddress: ShippingAddress;
+  shippingCost: number;
+  tax: number;
 }) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -167,7 +193,18 @@ export default function CheckoutForm({
     fetch("/api/create-payment-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount, cartId, userId }),
+      body: JSON.stringify({
+        amount,
+        subtotal,
+        discount,
+        pointsUsed,
+        couponCode,
+        userId,
+        items,
+        shippingAddress,
+        shippingCost,
+        tax,
+      }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -180,7 +217,7 @@ export default function CheckoutForm({
       .catch((err) => {
         setError("Failed to initialize payment");
       });
-  }, [amount, cartId, userId]);
+  }, [amount, subtotal, discount, pointsUsed, couponCode, userId, items, shippingAddress, shippingCost, tax]);
 
   if (error) {
     return (
@@ -216,7 +253,7 @@ export default function CheckoutForm({
         },
       }}
     >
-      <PaymentForm amount={amount} cartId={cartId} userId={userId} />
+      <PaymentForm amount={amount} userId={userId} />
     </Elements>
   );
 }

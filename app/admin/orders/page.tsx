@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import ChangeOrderStatusButton from "@/components/ChangeOrderStatusButton";
 
 export default async function AdminOrdersPage() {
@@ -83,13 +84,18 @@ export default async function AdminOrdersPage() {
                 <div key={order.id} className="p-6 hover:bg-coffee-50">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <p className="text-sm text-coffee-600 mb-1">
-                        Order {order.id.slice(0, 8)}...
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="text-lg font-medium text-coffee-900 hover:text-coffee-700 transition-colors"
+                      >
+                        {order.orderNumber}
+                      </Link>
+                      <p className="font-medium text-coffee-900 mt-1">
+                        {order.user?.name || order.guestEmail || "Guest"}
                       </p>
-                      <p className="font-medium text-coffee-900">
-                        {order.user.name || "Guest"}
+                      <p className="text-sm text-coffee-600">
+                        {order.user?.email || order.guestEmail}
                       </p>
-                      <p className="text-sm text-coffee-600">{order.user.email}</p>
                       <p className="text-xs text-coffee-500 mt-1">
                         {new Date(order.createdAt).toLocaleString("en-US", {
                           month: "short",
@@ -99,6 +105,11 @@ export default async function AdminOrdersPage() {
                           minute: "2-digit",
                         })}
                       </p>
+                      {order.trackingNumber && (
+                        <p className="text-xs text-coffee-600 mt-2">
+                          📦 Tracking: {order.trackingNumber}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-light text-coffee-900 mb-2">
@@ -107,7 +118,7 @@ export default async function AdminOrdersPage() {
                       <ChangeOrderStatusButton
                         orderId={order.id}
                         currentStatus={order.status}
-                        customerEmail={order.user.email}
+                        customerEmail={order.user?.email || order.guestEmail || ""}
                       />
                     </div>
                   </div>

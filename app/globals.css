@@ -8,6 +8,14 @@
   --background-end-rgb: 255, 255, 255;
 }
 
+/* Custom smooth scrolling and prevent layout shift */
+html {
+  overflow-y: scroll; /* Always show vertical scrollbar to prevent layout shift */
+  scrollbar-gutter: stable; /* Reserve space for scrollbar even when not needed */
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
@@ -16,12 +24,8 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
-}
-
-/* Custom smooth scrolling */
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 80px;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+  min-height: 100vh; /* Ensure body is always at least viewport height */
 }
 
 /* Smooth page transitions */

@@ -13,8 +13,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description, price, category, image, inStock } =
-      await request.json();
+    const {
+      name,
+      description,
+      price,
+      category,
+      image,
+      inStock,
+      roastLevel,
+      origin,
+      tastingNotes,
+      brewingMethods,
+    } = await request.json();
     const productId = params.productId;
 
     const product = await prisma.product.update({
@@ -26,6 +36,10 @@ export async function PATCH(
         category,
         image,
         inStock,
+        roastLevel,
+        origin,
+        tastingNotes: tastingNotes || [],
+        brewingMethods: brewingMethods || [],
       },
     });
 

@@ -21,7 +21,7 @@ export async function PATCH(
     }
 
     // Prevent admin from demoting themselves
-    if (params.userId === (session.user as any).id && role === "user") {
+    if (params.userId === (session.user as any).id && role !== "admin") {
       return NextResponse.json(
         { error: "Cannot demote yourself" },
         { status: 400 }

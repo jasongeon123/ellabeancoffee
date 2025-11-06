@@ -10,8 +10,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description, price, category, image, inStock } =
-      await request.json();
+    const {
+      name,
+      description,
+      price,
+      category,
+      image,
+      inStock,
+      stockQuantity,
+      lowStockAlert,
+      roastLevel,
+      origin,
+      tastingNotes,
+      brewingMethods,
+    } = await request.json();
 
     const product = await prisma.product.create({
       data: {
@@ -21,6 +33,13 @@ export async function POST(request: NextRequest) {
         category,
         image,
         inStock,
+        stock: stockQuantity || 0,
+        stockQuantity,
+        lowStockAlert,
+        roastLevel,
+        origin,
+        tastingNotes: tastingNotes || [],
+        brewingMethods: brewingMethods || [],
       },
     });
 

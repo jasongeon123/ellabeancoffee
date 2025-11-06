@@ -1,11 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import BulletinBoard from "@/components/BulletinBoard";
 import ProductShowcase from "@/components/ProductShowcase";
 import ScrollReveal from "@/components/ScrollReveal";
 import ParallaxSection from "@/components/ParallaxSection";
 import ScrollDownButton from "@/components/ScrollDownButton";
 import TestimonialsSection from "@/components/TestimonialsSection";
+import OrganizationStructuredData from "@/components/seo/OrganizationStructuredData";
+import { ProductCardSkeleton } from "@/components/SkeletonLoader";
 
 // Enable ISR - revalidate home page every 30 minutes
 export const revalidate = 1800;
@@ -13,6 +16,7 @@ export const revalidate = 1800;
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden">
+      <OrganizationStructuredData />
       {/* Hero Section */}
       <section className="relative min-h-[100vh] sm:min-h-[90vh] flex items-center justify-center bg-coffee-100">
         <div className="absolute inset-0 z-0">
@@ -76,20 +80,33 @@ export default function Home() {
 
       {/* Product Showcase */}
       <ScrollReveal delay={100}>
-        <section id="products" className="py-12 sm:py-16 md:py-24 bg-coffee-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-10 sm:mb-16 md:mb-20">
-              <span className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 bg-coffee-900 text-white text-[10px] sm:text-xs uppercase tracking-widest font-medium mb-4 sm:mb-6">
+        <section id="products" className="py-8 sm:py-10 md:py-12 bg-coffee-100 min-h-screen flex items-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
+            <div className="text-center mb-6 sm:mb-8 md:mb-10">
+              <span className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 bg-coffee-900 text-white text-[10px] sm:text-xs uppercase tracking-widest font-medium mb-3 sm:mb-4">
                 Our Menu
               </span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-coffee-900 mb-4 sm:mb-6 tracking-tight">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-light text-coffee-900 mb-3 sm:mb-4 tracking-tight">
                 Coffee Collection
               </h2>
-              <p className="text-base sm:text-lg md:text-xl text-coffee-600 font-light max-w-2xl mx-auto px-4">
+              <p className="text-sm sm:text-base md:text-lg text-coffee-600 font-light max-w-2xl mx-auto px-4">
                 Each blend carefully selected and roasted to perfection
               </p>
             </div>
-            <ProductShowcase />
+            <Suspense
+              fallback={
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <ProductCardSkeleton />
+                  <ProductCardSkeleton />
+                  <ProductCardSkeleton />
+                  <ProductCardSkeleton />
+                  <ProductCardSkeleton />
+                  <ProductCardSkeleton />
+                </div>
+              }
+            >
+              <ProductShowcase />
+            </Suspense>
           </div>
         </section>
       </ScrollReveal>

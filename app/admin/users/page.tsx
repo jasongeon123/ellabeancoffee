@@ -77,10 +77,10 @@ export default async function AdminUsersPage() {
                       className={`inline-block px-2 py-1 text-xs font-medium rounded ${
                         user.role === "admin"
                           ? "bg-purple-100 text-purple-700"
-                          : "bg-gray-100 text-gray-700"
+                          : "bg-green-100 text-green-700"
                       }`}
                     >
-                      {user.role}
+                      {user.role === "admin" ? "Admin" : "Customer"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-coffee-600">

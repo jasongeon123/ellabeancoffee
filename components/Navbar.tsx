@@ -5,14 +5,17 @@ import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useCart } from "@/contexts/CartContext";
+import SearchBar from "./SearchBar";
 
 export default function Navbar() {
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const { getTotalItems } = useCart();
+  const cartCount = getTotalItems();
 
   // Handle scroll effect
   useEffect(() => {
@@ -23,26 +26,6 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Fetch cart count
-  useEffect(() => {
-    if (session) {
-      fetchCartCount();
-    }
-  }, [session]);
-
-  const fetchCartCount = async () => {
-    try {
-      const response = await fetch("/api/cart");
-      if (response.ok) {
-        const data = await response.json();
-        const count = data.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
-        setCartCount(count);
-      }
-    } catch (error) {
-      console.error("Failed to fetch cart:", error);
-    }
-  };
-
   return (
     <nav
       className={`bg-white/95 backdrop-blur-md border-b sticky top-0 z-50 transition-all duration-300 ${
@@ -50,7 +33,7 @@ export default function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20 items-center">
+        <div className="flex justify-between h-20 items-center gap-4">
           {/* Logo with Icon */}
           <button
             onClick={() => {
@@ -60,7 +43,7 @@ export default function Navbar() {
                 router.push("/");
               }
             }}
-            className="flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-3 group cursor-pointer flex-shrink-0"
           >
             <div className="relative w-10 h-10 rounded-full overflow-hidden bg-coffee-100 flex items-center justify-center group-hover:bg-coffee-200 transition-colors">
               <Image
@@ -83,9 +66,9 @@ export default function Navbar() {
           </button>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-4 lg:gap-6">
             <Link
-              href="/#products"
+              href="/products"
               className="text-coffee-700 hover:text-coffee-900 transition-all font-light text-sm uppercase tracking-wider relative group py-2"
             >
               Products
@@ -105,6 +88,11 @@ export default function Navbar() {
               Contact
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-coffee-900 transition-all group-hover:w-full"></span>
             </Link>
+
+            {/* Search Bar */}
+            <div className="hidden lg:block">
+              <SearchBar />
+            </div>
 
             {/* Cart with Badge */}
             <Link
@@ -228,7 +216,7 @@ export default function Navbar() {
             )}
 
             <Link
-              href="/#products"
+              href="/products"
               className="flex items-center gap-3 px-4 py-3 text-coffee-700 hover:bg-coffee-50 rounded-lg transition-colors font-light"
               onClick={() => setMobileMenuOpen(false)}
             >

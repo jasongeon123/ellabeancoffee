@@ -13,14 +13,16 @@ export default function ChangeUserRoleButton({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handleChangeRole = async () => {
-    const newRole = currentRole === "admin" ? "user" : "admin";
+  const handleChangeRole = async (newRole: string) => {
+    if (newRole === currentRole) return;
+
+    const roleDescriptions = {
+      user: "Customer (can make purchases and reviews)",
+      admin: "Admin (full system access)",
+    };
+
     const confirmed = confirm(
-      `Change user role to ${newRole}? This will ${
-        newRole === "admin"
-          ? "grant admin privileges"
-          : "remove admin privileges"
-      }.`
+      `Change user role to ${newRole}?\n\n${roleDescriptions[newRole as keyof typeof roleDescriptions]}`
     );
 
     if (!confirmed) return;
@@ -36,7 +38,8 @@ export default function ChangeUserRoleButton({
       if (res.ok) {
         router.refresh();
       } else {
-        alert("Failed to change user role");
+        const data = await res.json();
+        alert(data.error || "Failed to change user role");
       }
     } catch (error) {
       console.error("Failed to change role:", error);
@@ -46,13 +49,26 @@ export default function ChangeUserRoleButton({
     }
   };
 
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "bg-purple-100 text-purple-700 border-purple-300";
+      case "user":
+        return "bg-green-100 text-green-700 border-green-300";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-300";
+    }
+  };
+
   return (
-    <button
-      onClick={handleChangeRole}
+    <select
+      value={currentRole}
+      onChange={(e) => handleChangeRole(e.target.value)}
       disabled={loading}
-      className="px-3 py-1 text-sm border border-coffee-300 rounded hover:bg-coffee-100 transition-colors disabled:opacity-50"
+      className={`px-3 py-1 text-sm border rounded transition-colors disabled:opacity-50 cursor-pointer ${getRoleColor(currentRole)}`}
     >
-      {loading ? "..." : currentRole === "admin" ? "Remove Admin" : "Make Admin"}
-    </button>
+      <option value="user">Customer</option>
+      <option value="admin">Admin</option>
+    </select>
   );
 }

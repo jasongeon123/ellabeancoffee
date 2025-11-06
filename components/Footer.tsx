@@ -41,7 +41,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#products" className="text-coffee-700 hover:text-coffee-900 transition-colors font-light">
+                <Link href="/products" className="text-coffee-700 hover:text-coffee-900 transition-colors font-light">
                   Products
                 </Link>
               </li>
@@ -87,6 +87,40 @@ export default function Footer() {
                 <span>Mobile Coffee Service<br />Your City, USA</span>
               </li>
             </ul>
+          </div>
+        </div>
+
+        {/* Trust Badges */}
+        <div className="mb-8 sm:mb-12 py-6 sm:py-8 border-y border-coffee-200">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            <div className="flex flex-col items-center text-center">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-coffee-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <div className="text-xs sm:text-sm font-medium text-coffee-900">Secure Checkout</div>
+              <div className="text-xs text-coffee-600">256-bit SSL</div>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-coffee-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <div className="text-xs sm:text-sm font-medium text-coffee-900">Safe Payment</div>
+              <div className="text-xs text-coffee-600">Stripe Protected</div>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-coffee-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              <div className="text-xs sm:text-sm font-medium text-coffee-900">Free Shipping</div>
+              <div className="text-xs text-coffee-600">On all orders</div>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-coffee-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-xs sm:text-sm font-medium text-coffee-900">Satisfaction Guaranteed</div>
+              <div className="text-xs text-coffee-600">100% Money Back</div>
+            </div>
           </div>
         </div>
 

@@ -54,6 +54,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user has a password (OAuth users don't)
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "Cannot change password for OAuth accounts" },
+        { status: 400 }
+      );
+    }
+
     // Verify current password
     const isValidPassword = await bcrypt.compare(currentPassword, user.password);
     if (!isValidPassword) {

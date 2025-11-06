@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import { CartProvider } from "@/contexts/CartContext";
 import Navbar from "@/components/Navbar";
 import PageTransition from "@/components/PageTransition";
 import ProgressBar from "@/components/ProgressBar";
 import Footer from "@/components/Footer";
+import DownScrollSnap from "@/components/DownScrollSnap";
 import { Analytics } from "@vercel/analytics/react";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
+import FacebookPixel from "@/components/analytics/FacebookPixel";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -86,11 +90,16 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={inter.className}>
+        <GoogleAnalytics />
+        <FacebookPixel />
         <AuthProvider>
-          <ProgressBar />
-          <Navbar />
-          <PageTransition>{children}</PageTransition>
-          <Footer />
+          <CartProvider>
+            <DownScrollSnap />
+            <ProgressBar />
+            <Navbar />
+            <PageTransition>{children}</PageTransition>
+            <Footer />
+          </CartProvider>
         </AuthProvider>
         <Analytics />
       </body>

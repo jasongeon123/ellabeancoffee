@@ -3,6 +3,40 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// GET - Fetch all coupons
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user || (session.user as any).role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const coupons = await prisma.coupon.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        usages: {
+          select: {
+            id: true,
+            usedAt: true,
+            orderNumber: true,
+            userId: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(coupons);
+  } catch (error) {
+    console.error("Failed to fetch coupons:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch coupons" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Create new coupon
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,11 +47,13 @@ export async function POST(request: NextRequest) {
 
     const {
       code,
+      description,
       discountPercent,
       discountAmount,
       minPurchase,
       maxUses,
       expiresAt,
+      active,
     } = await request.json();
 
     if (!code || (!discountPercent && !discountAmount)) {
@@ -30,10 +66,12 @@ export async function POST(request: NextRequest) {
     const coupon = await prisma.coupon.create({
       data: {
         code: code.toUpperCase(),
+        description,
         discountPercent,
         discountAmount,
         minPurchase,
         maxUses,
+        active: active !== undefined ? active : true,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
     });

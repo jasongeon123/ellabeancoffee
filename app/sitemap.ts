@@ -6,7 +6,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Fetch all products
   const products = await prisma.product.findMany({
-    select: { id: true, updatedAt: true },
+    select: { id: true, slug: true, updatedAt: true },
   });
 
   // Fetch all locations
@@ -64,11 +64,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.5,
     },
+    {
+      url: `${baseUrl}/track-order`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly' as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/terms`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly' as const,
+      priority: 0.3,
+    },
   ];
 
-  // Dynamic product pages
+  // Dynamic product pages (using slug for SEO-friendly URLs)
   const productPages = products.map((product) => ({
-    url: `${baseUrl}/products/${product.id}`,
+    url: `${baseUrl}/products/${product.slug || product.id}`,
     lastModified: product.updatedAt,
     changeFrequency: 'weekly' as const,
     priority: 0.9,

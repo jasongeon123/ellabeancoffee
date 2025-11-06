@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   // Content Security Policy - prevents XSS and injection attacks
   headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.stripe.com; frame-src https://js.stripe.com; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.facebook.com; frame-src https://js.stripe.com; frame-ancestors 'none';"
   );
 
   // Permissions policy - disable unnecessary browser features
@@ -66,6 +66,22 @@ export async function middleware(request: NextRequest) {
   // Strict Transport Security - force HTTPS
   if (process.env.NODE_ENV === "production") {
     headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+
+  // Add caching headers for better performance
+  const pathname = request.nextUrl.pathname;
+
+  // Cache static assets aggressively
+  if (pathname.match(/\.(jpg|jpeg|png|gif|svg|webp|ico|woff|woff2)$/)) {
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  }
+  // Cache API responses for short duration (except auth and cart)
+  else if (pathname.startsWith("/api/products") && request.method === "GET") {
+    headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
+  }
+  // No cache for dynamic API routes
+  else if (pathname.startsWith("/api/cart") || pathname.startsWith("/api/auth") || pathname.startsWith("/api/user")) {
+    headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate");
   }
 
   // Track page views for analytics (except for API routes, static files, and admin pages)

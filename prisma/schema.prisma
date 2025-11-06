@@ -13,34 +13,53 @@ model User {
   id            String         @id @default(cuid())
   email         String         @unique
   name          String?
-  password      String
+  password      String?        // Optional for OAuth users
+  provider      String?        // e.g., "google", "credentials"
+  providerId    String?        // OAuth provider user ID
+  image         String?        // Profile picture from OAuth
   role          String         @default("user") // user or admin
+  loyaltyPoints Int            @default(0) // Current loyalty points balance
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   cart          Cart?
   orders        Order[]
   reviews       Review[]
   subscriptions Subscription[]
+  emailChangeRequests EmailChangeRequest[]
+  pointsHistory PointsHistory[]
+  returns       Return[]
+
+  @@unique([provider, providerId])
 }
 
 model Product {
   id          String      @id @default(cuid())
   name        String
+  slug        String?     @unique // SEO-friendly URL slug
   description String
   price       Float
   image       String
   category    String
   inStock     Boolean     @default(true)
-  stockQuantity Int?      // Inventory count (null = unlimited)
+  stock       Int         @default(0) // Current inventory count
+  stockQuantity Int?      // Inventory count (null = unlimited) - deprecated, use stock
   lowStockAlert Int?      // Alert when stock falls below this number
+  // Coffee-specific metadata
+  roastLevel  String?     // Light, Medium, Medium-Dark, Dark
+  origin      String?     // Country/region of origin (e.g., Colombia, Ethiopia)
+  tastingNotes String[]   @default([]) // Array of flavor notes (e.g., chocolate, nutty, fruity)
+  brewingMethods String[] @default([]) // Recommended brewing methods (e.g., Pour Over, French Press)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   cartItems   CartItem[]
   orderItems  OrderItem[]
   reviews     Review[]
+  subscriptions Subscription[]
 
   @@index([inStock])
   @@index([category])
+  @@index([slug])
+  @@index([roastLevel])
 }
 
 model Cart {
@@ -66,14 +85,46 @@ model CartItem {
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  userId     String
-  user       User        @relation(fields: [userId], references: [id])
-  items      OrderItem[]
-  total      Float
-  status     String      @default("pending") // pending, completed, cancelled
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique // Human-readable order number (e.g., EB-2024-001234)
+  userId          String?     // Optional for guest orders
+  user            User?       @relation(fields: [userId], references: [id])
+  guestEmail      String?     // For guest orders
+  items           OrderItem[]
+  subtotal        Float       // Price before discounts
+  discount        Float       @default(0) // Amount discounted
+  shippingCost    Float       @default(0) // Calculated shipping cost
+  tax             Float       @default(0) // Sales tax
+  total           Float       // Final price after discount + shipping + tax
+  couponCode      String?     // Applied coupon code
+  pointsUsed      Int         @default(0) // Loyalty points redeemed
+  pointsEarned    Int         @default(0) // Loyalty points earned from this order
+
+  // Shipping Address
+  shippingName         String?  // Recipient name
+  shippingAddress      String?  // Street address
+  shippingCity         String?  // City
+  shippingState        String?  // State/Province
+  shippingZip          String?  // ZIP/Postal code
+  shippingCountry      String?  @default("US") // Country code
+  shippingPhone        String?  // Contact phone
+
+  status          String      @default("pending") // pending, processing, shipped, delivered, cancelled
+  trackingStatus  String?     // Current tracking status
+  trackingCarrier String?     // Shipping carrier (USPS, UPS, FedEx, etc.)
+  trackingNumber  String?     // Tracking number from carrier
+  trackingUrl     String?     // Direct tracking URL
+  notes           String?     // Admin notes about the order
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  trackingUpdates TrackingUpdate[]
+
+  @@index([orderNumber])
+  @@index([status])
+  @@index([userId])
+  @@index([couponCode])
+  @@index([shippingZip])
+  @@index([shippingState])
 }
 
 model OrderItem {
@@ -85,6 +136,18 @@ model OrderItem {
   quantity  Int
   price     Float
   createdAt DateTime @default(now())
+}
+
+model TrackingUpdate {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String   // Order status at this update
+  location    String?  // Current location of package
+  message     String   // Status message/description
+  timestamp   DateTime @default(now())
+
+  @@index([orderId])
 }
 
 model Location {
@@ -118,30 +181,64 @@ model Image {
 }
 
 model Review {
-  id        String   @id @default(cuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating    Int      // 1-5 stars
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String       @id @default(cuid())
+  productId        String
+  product          Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating           Int          // 1-5 stars
+  comment          String?
+  images           String[]     // Array of image URLs
+  verifiedPurchase Boolean      @default(false) // Badge for confirmed purchases
+  helpfulVotes     Int          @default(0) // Count of helpful votes
+  notHelpfulVotes  Int          @default(0) // Count of not helpful votes
+  status           String       @default("approved") // pending, approved, rejected
+  flagged          Boolean      @default(false) // User-flagged for review
+  flagReason       String?      // Reason for flagging
+  businessResponse String?      // Owner's response to review
+  respondedAt      DateTime?    // When owner responded
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  votes            ReviewVote[]
 
   @@unique([productId, userId]) // One review per user per product
+  @@index([verifiedPurchase])
+  @@index([helpfulVotes])
+  @@index([status])
+  @@index([flagged])
+}
+
+model ReviewVote {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId    String   // User who voted
+  helpful   Boolean  // true = helpful, false = not helpful
+  createdAt DateTime @default(now())
+
+  @@unique([reviewId, userId]) // One vote per user per review
+  @@index([reviewId])
 }
 
 model Subscription {
   id                String   @id @default(cuid())
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId         String   // The product they're subscribing to
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   stripeSubscriptionId String? @unique
   status            String   @default("active") // active, paused, cancelled
   frequency         String   // weekly, biweekly, monthly
+  quantity          Int      @default(1) // How many units per delivery
+  discount          Float    @default(10) // Discount percentage (e.g., 10 for 10% off)
   nextDeliveryDate  DateTime?
+  lastDeliveryDate  DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([productId])
+  @@index([status])
 }
 
 model Testimonial {
@@ -175,16 +272,93 @@ model ContactSubmission {
 model Coupon {
   id          String   @id @default(cuid())
   code        String   @unique
+  description String?  // Description of what the coupon is for
   discountPercent Int?    // Percentage discount (e.g., 20 for 20% off)
   discountAmount Float?   // Fixed amount discount
   minPurchase Float?    // Minimum purchase amount required
-  maxUses     Int?      // Maximum number of times this can be used
+  maxUses     Int?      // Maximum number of times this can be used (null = unlimited)
   usedCount   Int      @default(0)
   active      Boolean  @default(true)
   expiresAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  usages      CouponUsage[]
 
   @@index([code])
   @@index([active])
+  @@index([expiresAt])
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  userId    String?  // Optional - can be null for guest orders
+  orderNumber String // Link to order
+  usedAt    DateTime @default(now())
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([orderNumber])
+}
+
+model PointsHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points      Int      // Positive for earned, negative for spent
+  type        String   // earned, redeemed, expired, bonus, adjustment
+  description String   // Description of the transaction
+  orderId     String?  // Link to order if applicable
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Return {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderNumber String   // Order being returned
+  reason      String   // Reason for return
+  items       String[] // Array of item IDs being returned
+  status      String   @default("pending") // pending, approved, rejected, completed
+  refundAmount Float?  // Amount to be refunded
+  adminNotes  String?  // Admin notes about the return
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+}
+
+model EmailChangeRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oldEmail    String   // Store old email for audit trail
+  newEmail    String   // The email they want to change to
+  token       String   @unique // Secure random token
+  used        Boolean  @default(false) // Prevent token reuse
+  expiresAt   DateTime // Token expires after 1 hour
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model SubscriptionSettings {
+  id                    String   @id @default(cuid())
+  subscriptionsEnabled  Boolean  @default(true) // Master switch to enable/disable all subscriptions
+  weeklyEnabled         Boolean  @default(true)
+  weeklyDiscount        Float    @default(10) // Percentage discount for weekly subscriptions
+  biweeklyEnabled       Boolean  @default(true)
+  biweeklyDiscount      Float    @default(15) // Percentage discount for bi-weekly subscriptions
+  monthlyEnabled        Boolean  @default(true)
+  monthlyDiscount       Float    @default(20) // Percentage discount for monthly subscriptions
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
 }

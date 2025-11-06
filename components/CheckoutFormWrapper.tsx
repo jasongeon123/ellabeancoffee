@@ -12,14 +12,51 @@ const CheckoutForm = dynamic(() => import("./CheckoutForm"), {
   ssr: false, // Don't render on server since Stripe needs window object
 });
 
+interface ShippingAddress {
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  phone: string;
+}
+
 export default function CheckoutFormWrapper({
   amount,
-  cartId,
+  subtotal,
+  discount,
+  pointsUsed,
+  couponCode,
   userId,
+  items,
+  shippingAddress,
+  shippingCost,
+  tax,
 }: {
   amount: number;
-  cartId: string;
-  userId: string;
+  subtotal: number;
+  discount: number;
+  pointsUsed?: number;
+  couponCode?: string;
+  userId: string | null;
+  items: { productId: string; quantity: number }[];
+  shippingAddress: ShippingAddress;
+  shippingCost: number;
+  tax: number;
 }) {
-  return <CheckoutForm amount={amount} cartId={cartId} userId={userId} />;
+  return (
+    <CheckoutForm
+      amount={amount}
+      subtotal={subtotal}
+      discount={discount}
+      pointsUsed={pointsUsed}
+      couponCode={couponCode}
+      userId={userId}
+      items={items}
+      shippingAddress={shippingAddress}
+      shippingCost={shippingCost}
+      tax={tax}
+    />
+  );
 }

@@ -1,36 +1,21 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useCart } from "@/contexts/CartContext";
 import { useState } from "react";
 
 export default function AddToCartButton({ productId }: { productId: string }) {
-  const { data: session } = useSession();
-  const router = useRouter();
+  const { addItem } = useCart();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handleAddToCart = async () => {
-    if (!session) {
-      router.push("/auth/signin");
-      return;
-    }
-
     setLoading(true);
     try {
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      });
-
-      if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => {
-          setSuccess(false);
-          router.refresh();
-        }, 1000);
-      }
+      await addItem(productId);
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+      }, 1000);
     } catch (error) {
       console.error("Failed to add to cart:", error);
     } finally {

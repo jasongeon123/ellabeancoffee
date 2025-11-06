@@ -25,8 +25,18 @@ const nextConfig = {
       bodySizeLimit: '2mb', // Limit request body size
     },
     // Optimize package imports for better tree-shaking
-    optimizePackageImports: ['@stripe/react-stripe-js', '@stripe/stripe-js'],
+    optimizePackageImports: [
+      '@stripe/react-stripe-js',
+      '@stripe/stripe-js',
+      'next-auth',
+      '@prisma/client',
+      'react-icons',
+    ],
+    // Enable TypeScript plugin optimizations
+    typedRoutes: false,
   },
+  // Enable SWC minification for better performance
+  swcMinify: true,
   // Webpack configuration for bundle optimization
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {

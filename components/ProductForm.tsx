@@ -16,6 +16,10 @@ export default function ProductForm() {
     inStock: true,
     stockQuantity: "",
     lowStockAlert: "",
+    roastLevel: "",
+    origin: "",
+    tastingNotes: "",
+    brewingMethods: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,6 +35,10 @@ export default function ProductForm() {
           price: parseFloat(formData.price),
           stockQuantity: formData.stockQuantity ? parseInt(formData.stockQuantity) : null,
           lowStockAlert: formData.lowStockAlert ? parseInt(formData.lowStockAlert) : null,
+          roastLevel: formData.roastLevel || null,
+          origin: formData.origin || null,
+          tastingNotes: formData.tastingNotes ? formData.tastingNotes.split(',').map(n => n.trim()).filter(n => n) : [],
+          brewingMethods: formData.brewingMethods ? formData.brewingMethods.split(',').map(m => m.trim()).filter(m => m) : [],
         }),
       });
 
@@ -44,6 +52,10 @@ export default function ProductForm() {
           inStock: true,
           stockQuantity: "",
           lowStockAlert: "",
+          roastLevel: "",
+          origin: "",
+          tastingNotes: "",
+          brewingMethods: "",
         });
         router.refresh();
       }
@@ -164,6 +176,71 @@ export default function ProductForm() {
             className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500"
             placeholder="Alert when below this number"
           />
+        </div>
+      </div>
+
+      {/* Coffee-Specific Details */}
+      <div className="border-t border-coffee-200 pt-4 mt-4">
+        <h3 className="text-lg font-medium text-coffee-900 mb-4">Coffee Details (Optional)</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-coffee-900 mb-2">
+              Roast Level
+            </label>
+            <select
+              value={formData.roastLevel}
+              onChange={(e) => setFormData({ ...formData, roastLevel: e.target.value })}
+              className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500"
+            >
+              <option value="">Select roast level</option>
+              <option value="Light">Light</option>
+              <option value="Medium">Medium</option>
+              <option value="Medium-Dark">Medium-Dark</option>
+              <option value="Dark">Dark</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-coffee-900 mb-2">
+              Origin/Region
+            </label>
+            <input
+              type="text"
+              value={formData.origin}
+              onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
+              className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500"
+              placeholder="e.g., Colombia, Ethiopia, Brazil"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-coffee-900 mb-2">
+            Tasting Notes (comma-separated)
+          </label>
+          <input
+            type="text"
+            value={formData.tastingNotes}
+            onChange={(e) => setFormData({ ...formData, tastingNotes: e.target.value })}
+            className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500"
+            placeholder="e.g., chocolate, nutty, caramel, fruity"
+          />
+          <p className="text-xs text-coffee-500 mt-1">Enter flavor notes separated by commas</p>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-coffee-900 mb-2">
+            Recommended Brewing Methods (comma-separated)
+          </label>
+          <input
+            type="text"
+            value={formData.brewingMethods}
+            onChange={(e) => setFormData({ ...formData, brewingMethods: e.target.value })}
+            className="w-full px-3 py-2 border border-coffee-300 focus:outline-none focus:border-coffee-500"
+            placeholder="e.g., Pour Over, French Press, Espresso"
+          />
+          <p className="text-xs text-coffee-500 mt-1">Enter brewing methods separated by commas</p>
         </div>
       </div>
 

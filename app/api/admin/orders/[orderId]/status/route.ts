@@ -45,21 +45,25 @@ export async function PATCH(
         )
         .join("");
 
-      try {
-        await resend.emails.send({
-          from: "Ella Bean Coffee <orders@ellabeancoffee.com>",
-          to: order.user.email,
-          subject: "Your Ella Bean Coffee Order is Complete!",
-          html: `
-            <!DOCTYPE html>
-            <html>
-              <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                  <div style="background: #4A2C2A; color: white; padding: 20px; text-align: center;">
-                    <h1>Order Complete!</h1>
-                  </div>
-                  <div style="padding: 20px; background: #f9f9f9;">
-                    <p>Hello ${order.user.name || "there"},</p>
+      const recipientEmail = order.user?.email || order.guestEmail;
+      const recipientName = order.user?.name || "there";
+
+      if (recipientEmail) {
+        try {
+          await resend.emails.send({
+            from: "Ella Bean Coffee <orders@ellabeancoffee.com>",
+            to: recipientEmail,
+            subject: "Your Ella Bean Coffee Order is Complete!",
+            html: `
+              <!DOCTYPE html>
+              <html>
+                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #4A2C2A; color: white; padding: 20px; text-align: center;">
+                      <h1>Order Complete!</h1>
+                    </div>
+                    <div style="padding: 20px; background: #f9f9f9;">
+                      <p>Hello ${recipientName},</p>
                     <p>Great news! Your order has been completed and is ready for pickup at our next location.</p>
 
                     <div style="background: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
@@ -83,10 +87,11 @@ export async function PATCH(
               </body>
             </html>
           `,
-        });
-      } catch (emailError) {
-        console.error("Failed to send email:", emailError);
-        // Don't fail the request if email fails
+          });
+        } catch (emailError) {
+          console.error("Failed to send email:", emailError);
+          // Don't fail the request if email fails
+        }
       }
     }
 
