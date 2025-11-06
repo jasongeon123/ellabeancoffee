@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resend } from "@/lib/email";
+import { getResendClient } from "@/lib/email";
 
 export async function PATCH(
   request: NextRequest,
@@ -50,7 +50,9 @@ export async function PATCH(
 
       if (recipientEmail) {
         try {
-          await resend.emails.send({
+          const resend = getResendClient();
+          if (resend) {
+            await resend.emails.send({
             from: "Ella Bean Coffee <orders@ellabeancoffee.com>",
             to: recipientEmail,
             subject: "Your Ella Bean Coffee Order is Complete!",
@@ -88,6 +90,7 @@ export async function PATCH(
             </html>
           `,
           });
+          }
         } catch (emailError) {
           console.error("Failed to send email:", emailError);
           // Don't fail the request if email fails

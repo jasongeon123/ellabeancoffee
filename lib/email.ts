@@ -1,6 +1,14 @@
 import { Resend } from "resend";
 
-export const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to prevent build errors when API key is not available
+let resendInstance: Resend | null = null;
+
+export function getResendClient() {
+  if (!resendInstance && process.env.RESEND_API_KEY) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendInstance;
+}
 
 export async function sendOrderConfirmationEmail(
   to: string,
@@ -70,6 +78,11 @@ export async function sendOrderConfirmationEmail(
       console.log("Order ID:", orderDetails.orderId);
       console.log("Total:", orderDetails.total);
       return { success: true, message: "Email logging (no API key configured)" };
+    }
+
+    const resend = getResendClient();
+    if (!resend) {
+      throw new Error("Resend client not initialized");
     }
 
     await resend.emails.send({
@@ -171,6 +184,11 @@ export async function sendEmailChangeVerification(
       return { success: true, message: "Email logging (no API key configured)" };
     }
 
+    const resend = getResendClient();
+    if (!resend) {
+      throw new Error("Resend client not initialized");
+    }
+
     await resend.emails.send({
       from: "Ella Bean Coffee <security@ellabean.coffee>",
       to,
@@ -266,6 +284,11 @@ export async function sendEmailChangeNotification(
       return { success: true, message: "Email logging (no API key configured)" };
     }
 
+    const resend = getResendClient();
+    if (!resend) {
+      throw new Error("Resend client not initialized");
+    }
+
     await resend.emails.send({
       from: "Ella Bean Coffee <security@ellabean.coffee>",
       to,
@@ -358,6 +381,11 @@ export async function sendShippingNotificationEmail(
       console.log("Shipping notification would be sent to:", to);
       console.log("Order Number:", orderDetails.orderNumber);
       return { success: true, message: "Email logging (no API key configured)" };
+    }
+
+    const resend = getResendClient();
+    if (!resend) {
+      throw new Error("Resend client not initialized");
     }
 
     await resend.emails.send({
@@ -460,6 +488,11 @@ export async function sendOrderStatusUpdateEmail(
       console.log("Order Number:", orderDetails.orderNumber);
       console.log("Status:", orderDetails.status);
       return { success: true, message: "Email logging (no API key configured)" };
+    }
+
+    const resend = getResendClient();
+    if (!resend) {
+      throw new Error("Resend client not initialized");
     }
 
     await resend.emails.send({
@@ -583,6 +616,11 @@ export async function sendAbandonedCartEmail(
       console.log("Abandoned cart email would be sent to:", to);
       console.log("Cart total:", cartDetails.total);
       return { success: true, message: "Email logging (no API key configured)" };
+    }
+
+    const resend = getResendClient();
+    if (!resend) {
+      throw new Error("Resend client not initialized");
     }
 
     await resend.emails.send({
