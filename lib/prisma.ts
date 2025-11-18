@@ -2,32 +2,30 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 
 const prismaClientSingleton = () => {
-  // In development, use standard Prisma Client
-  if (process.env.NODE_ENV === 'development') {
-    return new PrismaClient({
-      log: ['query', 'error', 'warn'],
-    });
-  }
+  const connectionString = `${process.env.DATABASE_URL}`;
 
-  // In production (Vercel), use Neon serverless adapter
-  try {
-    const connectionString = `${process.env.DATABASE_URL}`;
-    if (!connectionString || connectionString === 'undefined') {
-      console.error('[Prisma] DATABASE_URL is not set!');
-      throw new Error('DATABASE_URL environment variable is required');
+  // Use Neon adapter if connection string has pooler
+  // This works both locally and on Vercel
+  if (connectionString && connectionString.includes('-pooler')) {
+    try {
+      console.log('[Prisma] Using Neon serverless adapter');
+      const adapter = new PrismaNeon({ connectionString });
+
+      return new PrismaClient({
+        adapter,
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      });
+    } catch (error) {
+      console.error('[Prisma] Failed to initialize with Neon adapter:', error);
+      throw error;
     }
-
-    console.log('[Prisma] Initializing Neon adapter for production');
-    const adapter = new PrismaNeon({ connectionString });
-
-    return new PrismaClient({
-      adapter,
-      log: ['error', 'warn'],
-    });
-  } catch (error) {
-    console.error('[Prisma] Failed to initialize with Neon adapter:', error);
-    throw error;
   }
+
+  // Fallback to standard Prisma Client (for local dev without pooler)
+  console.log('[Prisma] Using standard Prisma Client');
+  return new PrismaClient({
+    log: ['query', 'error', 'warn'],
+  });
 };
 
 declare global {
