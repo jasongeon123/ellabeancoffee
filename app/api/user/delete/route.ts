@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 export async function DELETE(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     // Get the authenticated user's session
     const session = await getServerSession(authOptions);
@@ -18,11 +20,12 @@ export async function DELETE(request: NextRequest) {
     const userId = (session.user as any).id;
 
     // Verify user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const userResult = await pool.query(
+      `SELECT id FROM "User" WHERE id = $1`,
+      [userId]
+    );
 
-    if (!user) {
+    if (userResult.rows.length === 0) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
@@ -30,9 +33,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete user (cascade will handle related records: Cart, Orders, Reviews, Subscriptions)
-    await prisma.user.delete({
-      where: { id: userId }
-    });
+    await pool.query(
+      `DELETE FROM "User" WHERE id = $1`,
+      [userId]
+    );
 
     return NextResponse.json({
       message: "Account deleted successfully"
@@ -43,5 +47,7 @@ export async function DELETE(request: NextRequest) {
       { error: "Failed to delete account" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

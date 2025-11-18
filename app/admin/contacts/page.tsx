@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { redirect } from "next/navigation";
 import MarkContactReadButton from "@/components/MarkContactReadButton";
 
@@ -11,9 +11,18 @@ export default async function AdminContactsPage() {
     redirect("/");
   }
 
-  const contacts = await prisma.contactSubmission.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  let contacts = [];
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM "ContactSubmission" ORDER BY "createdAt" DESC`
+    );
+    contacts = result.rows;
+  } finally {
+    await pool.end();
+  }
 
   const unreadCount = contacts.filter((c) => !c.read).length;
 

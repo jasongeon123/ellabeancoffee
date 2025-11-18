@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { randomBytes } from "crypto";
@@ -16,6 +16,8 @@ const emailChangeSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -36,13 +38,16 @@ export async function POST(request: NextRequest) {
     const { newEmail, password } = validation.data;
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
+    const userResult = await pool.query(
+      `SELECT * FROM "User" WHERE email = $1`,
+      [session.user.email]
+    );
 
-    if (!user) {
+    if (userResult.rows.length === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const user = userResult.rows[0];
 
     // 🔒 SECURITY: Prevent OAuth users from changing email
     // OAuth users don't have passwords and their email is tied to the provider
@@ -74,11 +79,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if new email is already in use
-    const existingUser = await prisma.user.findUnique({
-      where: { email: newEmail },
-    });
+    const existingResult = await pool.query(
+      `SELECT id FROM "User" WHERE email = $1`,
+      [newEmail]
+    );
 
-    if (existingUser) {
+    if (existingResult.rows.length > 0) {
       return NextResponse.json(
         { error: "Email address already in use" },
         { status: 409 }
@@ -86,16 +92,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔒 SECURITY: Check for pending requests (prevent spam)
-    const recentRequest = await prisma.emailChangeRequest.findFirst({
-      where: {
-        userId: user.id,
-        createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000), // Last 5 minutes
-        },
-      },
-    });
+    const recentResult = await pool.query(
+      `SELECT id FROM "EmailChangeRequest"
+       WHERE "userId" = $1 AND "createdAt" >= $2`,
+      [user.id, new Date(Date.now() - 5 * 60 * 1000)]
+    );
 
-    if (recentRequest) {
+    if (recentResult.rows.length > 0) {
       return NextResponse.json(
         {
           error:
@@ -112,23 +115,17 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
     // Delete any existing unused tokens for this user
-    await prisma.emailChangeRequest.deleteMany({
-      where: {
-        userId: user.id,
-        used: false,
-      },
-    });
+    await pool.query(
+      `DELETE FROM "EmailChangeRequest" WHERE "userId" = $1 AND used = false`,
+      [user.id]
+    );
 
     // Create new email change request
-    await prisma.emailChangeRequest.create({
-      data: {
-        userId: user.id,
-        oldEmail: user.email,
-        newEmail: newEmail.toLowerCase(),
-        token,
-        expiresAt,
-      },
-    });
+    await pool.query(
+      `INSERT INTO "EmailChangeRequest" ("userId", "oldEmail", "newEmail", token, "expiresAt", "createdAt")
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [user.id, user.email, newEmail.toLowerCase(), token, expiresAt]
+    );
 
     // 🔒 SECURITY: Send verification email to NEW email
     const verificationResult = await sendEmailChangeVerification(

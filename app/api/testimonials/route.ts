@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { z } from "zod";
 
 const testimonialSchema = z.object({
@@ -10,24 +10,29 @@ const testimonialSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const body = await request.json();
     const validatedData = testimonialSchema.parse(body);
 
     // Create testimonial (defaults to approved: false)
-    const testimonial = await prisma.testimonial.create({
-      data: {
-        name: validatedData.name,
-        email: validatedData.email || null,
-        rating: validatedData.rating,
-        comment: validatedData.comment,
-      },
-    });
+    const result = await pool.query(
+      `INSERT INTO "Testimonial" (name, email, rating, comment, approved, featured, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, false, false, NOW(), NOW())
+       RETURNING *`,
+      [
+        validatedData.name,
+        validatedData.email || null,
+        validatedData.rating,
+        validatedData.comment,
+      ]
+    );
 
     return NextResponse.json(
       {
         message: "Thank you for your testimonial! It will be reviewed and published soon.",
-        id: testimonial.id,
+        id: result.rows[0].id,
       },
       { status: 201 }
     );
@@ -44,30 +49,39 @@ export async function POST(request: Request) {
       { error: "Failed to submit testimonial" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }
 
 // Optional: GET endpoint for admin to fetch testimonials
 export async function GET(request: Request) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const { searchParams } = new URL(request.url);
     const approved = searchParams.get("approved");
 
-    const where = approved === "true" ? { approved: true } : {};
+    let query = `SELECT * FROM "Testimonial"`;
+    const values: any[] = [];
 
-    const testimonials = await prisma.testimonial.findMany({
-      where,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    if (approved === "true") {
+      query += ` WHERE approved = $1`;
+      values.push(true);
+    }
 
-    return NextResponse.json(testimonials);
+    query += ` ORDER BY "createdAt" DESC`;
+
+    const result = await pool.query(query, values);
+
+    return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Failed to fetch testimonials:", error);
     return NextResponse.json(
       { error: "Failed to fetch testimonials" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

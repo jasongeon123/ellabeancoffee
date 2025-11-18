@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 export async function POST(req: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const { code, cartTotal } = await req.json();
 
@@ -10,13 +12,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Find the coupon
-    const coupon = await prisma.coupon.findUnique({
-      where: { code: code.toUpperCase() },
-    });
+    const result = await pool.query(
+      `SELECT * FROM "Coupon" WHERE code = $1`,
+      [code.toUpperCase()]
+    );
 
-    if (!coupon) {
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: "Invalid coupon code" }, { status: 404 });
     }
+
+    const coupon = result.rows[0];
 
     // Check if coupon is active
     if (!coupon.active) {
@@ -36,7 +41,7 @@ export async function POST(req: NextRequest) {
     // Check minimum purchase
     if (coupon.minPurchase && cartTotal < coupon.minPurchase) {
       return NextResponse.json(
-        { error: `Minimum purchase of $${coupon.minPurchase.toFixed(2)} required` },
+        { error: `Minimum purchase of $${parseFloat(coupon.minPurchase).toFixed(2)} required` },
         { status: 400 }
       );
     }
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
     if (coupon.discountPercent) {
       discountAmount = (cartTotal * coupon.discountPercent) / 100;
     } else if (coupon.discountAmount) {
-      discountAmount = coupon.discountAmount;
+      discountAmount = parseFloat(coupon.discountAmount);
     }
 
     // Don't let discount exceed cart total
@@ -66,5 +71,7 @@ export async function POST(req: NextRequest) {
       { error: "Failed to validate coupon" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

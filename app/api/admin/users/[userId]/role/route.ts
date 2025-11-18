@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -28,17 +30,23 @@ export async function PATCH(
       );
     }
 
-    const user = await prisma.user.update({
-      where: { id: params.userId },
-      data: { role },
-    });
+    const result = await pool.query(
+      `UPDATE "User" SET role = $1, "updatedAt" = NOW() WHERE id = $2 RETURNING *`,
+      [role, params.userId]
+    );
 
-    return NextResponse.json(user);
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0]);
   } catch (error) {
     console.error("Failed to update user role:", error);
     return NextResponse.json(
       { error: "Failed to update user role" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

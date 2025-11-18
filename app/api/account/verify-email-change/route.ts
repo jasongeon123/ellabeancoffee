@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { z } from "zod";
 
 const verifySchema = z.object({
@@ -7,6 +7,8 @@ const verifySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const body = await request.json();
     const validation = verifySchema.safeParse(body);
@@ -21,17 +23,22 @@ export async function POST(request: NextRequest) {
     const { token } = validation.data;
 
     // 🔒 SECURITY: Find the email change request
-    const emailChangeRequest = await prisma.emailChangeRequest.findUnique({
-      where: { token },
-      include: { user: true },
-    });
+    const reqResult = await pool.query(
+      `SELECT ecr.*, u.email as "userEmail", u.name as "userName"
+       FROM "EmailChangeRequest" ecr
+       JOIN "User" u ON u.id = ecr."userId"
+       WHERE ecr.token = $1`,
+      [token]
+    );
 
-    if (!emailChangeRequest) {
+    if (reqResult.rows.length === 0) {
       return NextResponse.json(
         { error: "Invalid verification token" },
         { status: 404 }
       );
     }
+
+    const emailChangeRequest = reqResult.rows[0];
 
     // 🔒 SECURITY: Check if token has already been used
     if (emailChangeRequest.used) {
@@ -42,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔒 SECURITY: Check if token has expired
-    if (new Date() > emailChangeRequest.expiresAt) {
+    if (new Date() > new Date(emailChangeRequest.expiresAt)) {
       return NextResponse.json(
         { error: "Verification link has expired. Please request a new one." },
         { status: 410 }
@@ -50,11 +57,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔒 SECURITY: Double-check new email is not taken (race condition protection)
-    const existingUser = await prisma.user.findUnique({
-      where: { email: emailChangeRequest.newEmail },
-    });
+    const existingResult = await pool.query(
+      `SELECT id FROM "User" WHERE email = $1`,
+      [emailChangeRequest.newEmail]
+    );
 
-    if (existingUser && existingUser.id !== emailChangeRequest.userId) {
+    if (existingResult.rows.length > 0 && existingResult.rows[0].id !== emailChangeRequest.userId) {
       return NextResponse.json(
         { error: "Email address is no longer available" },
         { status: 409 }
@@ -62,26 +70,33 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔒 SECURITY: Perform email update in a transaction for atomicity
-    await prisma.$transaction([
+    await pool.query('BEGIN');
+
+    try {
       // Update user's email
-      prisma.user.update({
-        where: { id: emailChangeRequest.userId },
-        data: { email: emailChangeRequest.newEmail },
-      }),
+      await pool.query(
+        `UPDATE "User" SET email = $1, "updatedAt" = NOW() WHERE id = $2`,
+        [emailChangeRequest.newEmail, emailChangeRequest.userId]
+      );
+
       // Mark token as used (prevent reuse)
-      prisma.emailChangeRequest.update({
-        where: { id: emailChangeRequest.id },
-        data: { used: true },
-      }),
+      await pool.query(
+        `UPDATE "EmailChangeRequest" SET used = true WHERE id = $1`,
+        [emailChangeRequest.id]
+      );
+
       // Delete any other pending requests for this user
-      prisma.emailChangeRequest.deleteMany({
-        where: {
-          userId: emailChangeRequest.userId,
-          used: false,
-          id: { not: emailChangeRequest.id },
-        },
-      }),
-    ]);
+      await pool.query(
+        `DELETE FROM "EmailChangeRequest"
+         WHERE "userId" = $1 AND used = false AND id != $2`,
+        [emailChangeRequest.userId, emailChangeRequest.id]
+      );
+
+      await pool.query('COMMIT');
+    } catch (err) {
+      await pool.query('ROLLBACK');
+      throw err;
+    }
 
     return NextResponse.json({
       message:
@@ -94,6 +109,8 @@ export async function POST(request: NextRequest) {
       { error: "Failed to verify email change" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }
 

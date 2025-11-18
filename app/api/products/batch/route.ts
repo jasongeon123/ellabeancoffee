@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const { productIds } = await request.json();
 
@@ -9,28 +11,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid product IDs" }, { status: 400 });
     }
 
-    const products = await prisma.product.findMany({
-      where: {
-        id: {
-          in: productIds,
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        image: true,
-        description: true,
-        inStock: true,
-      },
-    });
+    const placeholders = productIds.map((_, i) => `$${i + 1}`).join(", ");
 
-    return NextResponse.json(products);
+    const result = await pool.query(
+      `SELECT id, name, price, image, description, "inStock"
+       FROM "Product"
+       WHERE id IN (${placeholders})`,
+      productIds
+    );
+
+    return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Failed to fetch products:", error);
     return NextResponse.json(
       { error: "Failed to fetch products" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

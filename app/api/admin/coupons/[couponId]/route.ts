@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 // PATCH - Update coupon
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { couponId: string } }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -27,27 +29,57 @@ export async function PATCH(
       active,
     } = body;
 
-    const updateData: any = {};
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
 
-    if (code !== undefined) updateData.code = code.toUpperCase();
-    if (description !== undefined) updateData.description = description;
-    if (discountPercent !== undefined) updateData.discountPercent = discountPercent;
-    if (discountAmount !== undefined) updateData.discountAmount = discountAmount;
-    if (minPurchase !== undefined) updateData.minPurchase = minPurchase;
-    if (maxUses !== undefined) updateData.maxUses = maxUses;
-    if (active !== undefined) updateData.active = active;
+    if (code !== undefined) {
+      updates.push(`code = $${paramIndex++}`);
+      values.push(code.toUpperCase());
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(description);
+    }
+    if (discountPercent !== undefined) {
+      updates.push(`"discountPercent" = $${paramIndex++}`);
+      values.push(discountPercent);
+    }
+    if (discountAmount !== undefined) {
+      updates.push(`"discountAmount" = $${paramIndex++}`);
+      values.push(discountAmount);
+    }
+    if (minPurchase !== undefined) {
+      updates.push(`"minPurchase" = $${paramIndex++}`);
+      values.push(minPurchase);
+    }
+    if (maxUses !== undefined) {
+      updates.push(`"maxUses" = $${paramIndex++}`);
+      values.push(maxUses);
+    }
+    if (active !== undefined) {
+      updates.push(`active = $${paramIndex++}`);
+      values.push(active);
+    }
     if (expiresAt !== undefined) {
-      updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      updates.push(`"expiresAt" = $${paramIndex++}`);
+      values.push(expiresAt ? new Date(expiresAt) : null);
     }
 
-    const coupon = await prisma.coupon.update({
-      where: { id: params.couponId },
-      data: updateData,
-    });
+    values.push(params.couponId);
 
-    return NextResponse.json(coupon);
+    const result = await pool.query(
+      `UPDATE "Coupon" SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING *`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0]);
   } catch (error: any) {
-    if (error.code === "P2002") {
+    if (error.code === "23505") {
       return NextResponse.json(
         { error: "Coupon code already exists" },
         { status: 400 }
@@ -58,6 +90,8 @@ export async function PATCH(
       { error: "Failed to update coupon" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }
 
@@ -66,6 +100,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { couponId: string } }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -73,9 +109,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.coupon.delete({
-      where: { id: params.couponId },
-    });
+    await pool.query(
+      `DELETE FROM "Coupon" WHERE id = $1`,
+      [params.couponId]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -84,5 +121,7 @@ export async function DELETE(
       { error: "Failed to delete coupon" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

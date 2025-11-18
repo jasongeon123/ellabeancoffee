@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 // GET - Fetch all coupons
 export async function GET(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -12,32 +14,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const coupons = await prisma.coupon.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        usages: {
-          select: {
-            id: true,
-            usedAt: true,
-            orderNumber: true,
-            userId: true,
-          },
-        },
-      },
-    });
+    const result = await pool.query(
+      `SELECT
+        c.*,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', cu.id,
+              'usedAt', cu."usedAt",
+              'orderNumber', cu."orderNumber",
+              'userId', cu."userId"
+            )
+          ) FILTER (WHERE cu.id IS NOT NULL),
+          '[]'
+        ) as usages
+      FROM "Coupon" c
+      LEFT JOIN "CouponUsage" cu ON cu."couponId" = c.id
+      GROUP BY c.id
+      ORDER BY c."createdAt" DESC`
+    );
 
-    return NextResponse.json(coupons);
+    return NextResponse.json(result.rows);
   } catch (error) {
     console.error("Failed to fetch coupons:", error);
     return NextResponse.json(
       { error: "Failed to fetch coupons" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }
 
 // POST - Create new coupon
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -63,22 +75,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const coupon = await prisma.coupon.create({
-      data: {
-        code: code.toUpperCase(),
+    const result = await pool.query(
+      `INSERT INTO "Coupon" (
+        code, description, "discountPercent", "discountAmount",
+        "minPurchase", "maxUses", active, "expiresAt", "createdAt", "updatedAt"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+      RETURNING *`,
+      [
+        code.toUpperCase(),
         description,
         discountPercent,
         discountAmount,
         minPurchase,
         maxUses,
-        active: active !== undefined ? active : true,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-    });
+        active !== undefined ? active : true,
+        expiresAt ? new Date(expiresAt) : null,
+      ]
+    );
 
-    return NextResponse.json(coupon);
+    return NextResponse.json(result.rows[0]);
   } catch (error: any) {
-    if (error.code === "P2002") {
+    if (error.code === "23505") {
       return NextResponse.json(
         { error: "Coupon code already exists" },
         { status: 400 }
@@ -89,5 +106,7 @@ export async function POST(request: NextRequest) {
       { error: "Failed to create coupon" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

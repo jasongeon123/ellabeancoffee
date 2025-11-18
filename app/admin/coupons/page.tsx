@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { redirect } from "next/navigation";
 import CouponForm from "@/components/CouponForm";
 import DeleteCouponButton from "@/components/DeleteCouponButton";
@@ -13,9 +13,18 @@ export default async function AdminCouponsPage() {
     redirect("/");
   }
 
-  const coupons = await prisma.coupon.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  let coupons = [];
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM "Coupon" ORDER BY "createdAt" DESC`
+    );
+    coupons = result.rows;
+  } finally {
+    await pool.end();
+  }
 
   return (
     <div className="min-h-screen bg-coffee-50 py-12">

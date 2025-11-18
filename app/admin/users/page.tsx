@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { redirect } from "next/navigation";
 import ChangeUserRoleButton from "@/components/ChangeUserRoleButton";
 
@@ -11,22 +11,37 @@ export default async function AdminUsersPage() {
     redirect("/");
   }
 
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      createdAt: true,
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  let users = [];
+
+  try {
+    const result = await pool.query(
+      `SELECT
+        u.id,
+        u.email,
+        u.name,
+        u.role,
+        u."createdAt",
+        COALESCE(COUNT(DISTINCT o.id), 0)::int as orders,
+        COALESCE(COUNT(DISTINCT r.id), 0)::int as reviews
+      FROM "User" u
+      LEFT JOIN "Order" o ON o."userId" = u.id
+      LEFT JOIN "Review" r ON r."userId" = u.id
+      GROUP BY u.id, u.email, u.name, u.role, u."createdAt"
+      ORDER BY u."createdAt" DESC`
+    );
+
+    users = result.rows.map(row => ({
+      ...row,
       _count: {
-        select: {
-          orders: true,
-          reviews: true,
-        },
+        orders: row.orders,
+        reviews: row.reviews,
       },
-    },
-  });
+    }));
+  } finally {
+    await pool.end();
+  }
 
   return (
     <div className="min-h-screen bg-coffee-50 py-12">

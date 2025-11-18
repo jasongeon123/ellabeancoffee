@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { couponId: string } }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -16,17 +18,23 @@ export async function PATCH(
 
     const { active } = await request.json();
 
-    const coupon = await prisma.coupon.update({
-      where: { id: params.couponId },
-      data: { active },
-    });
+    const result = await pool.query(
+      `UPDATE "Coupon" SET active = $1, "updatedAt" = NOW() WHERE id = $2 RETURNING *`,
+      [active, params.couponId]
+    );
 
-    return NextResponse.json(coupon);
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0]);
   } catch (error) {
     console.error("Failed to toggle coupon:", error);
     return NextResponse.json(
       { error: "Failed to toggle coupon" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

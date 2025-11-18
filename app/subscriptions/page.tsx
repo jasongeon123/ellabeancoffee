@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Link from "next/link";
@@ -8,21 +8,29 @@ export default async function SubscriptionsPage() {
   const session = await getServerSession(authOptions);
   const userId = session ? (session.user as any).id : null;
 
-  // Get available products for subscription
-  const products = await prisma.product.findMany({
-    where: { inStock: true },
-    take: 6,
-  });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-  // Get user's active subscriptions if logged in
-  const userSubscriptions = userId
-    ? await prisma.subscription.findMany({
-        where: {
-          userId,
-          status: "active",
-        },
-      })
-    : [];
+  let products = [];
+  let userSubscriptions = [];
+
+  try {
+    // Get available products for subscription
+    const productsResult = await pool.query(
+      `SELECT * FROM "Product" WHERE "inStock" = true ORDER BY "createdAt" DESC LIMIT 6`
+    );
+    products = productsResult.rows;
+
+    // Get user's active subscriptions if logged in
+    if (userId) {
+      const subscriptionsResult = await pool.query(
+        `SELECT * FROM "Subscription" WHERE "userId" = $1 AND status = 'active'`,
+        [userId]
+      );
+      userSubscriptions = subscriptionsResult.rows;
+    }
+  } finally {
+    await pool.end();
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-coffee-100 to-coffee-50 py-12 sm:py-16 md:py-24">

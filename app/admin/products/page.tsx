@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import ProductForm from "@/components/ProductForm";
@@ -15,9 +15,18 @@ export default async function AdminProducts() {
     redirect("/");
   }
 
-  const products = await prisma.product.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  let products = [];
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM "Product" ORDER BY "createdAt" DESC`
+    );
+    products = result.rows;
+  } finally {
+    await pool.end();
+  }
 
   return (
     <div className="min-h-screen bg-coffee-50 py-12">

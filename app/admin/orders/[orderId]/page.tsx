@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import Link from "next/link";
 import OrderTrackingForm from "@/components/OrderTrackingForm";
 
@@ -16,27 +16,62 @@ export default async function AdminOrderDetailsPage({
     redirect("/");
   }
 
-  const order = await prisma.order.findUnique({
-    where: { id: params.orderId },
-    include: {
-      items: {
-        include: {
-          product: true,
-        },
-      },
-      trackingUpdates: {
-        orderBy: {
-          timestamp: "desc",
-        },
-      },
-      user: {
-        select: {
-          name: true,
-          email: true,
-        },
-      },
-    },
-  });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  let order = null;
+
+  try {
+    const result = await pool.query(
+      `SELECT
+        o.*,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', oi.id,
+              'quantity', oi.quantity,
+              'price', oi.price,
+              'product', jsonb_build_object(
+                'id', p.id,
+                'name', p.name,
+                'price', p.price,
+                'image', p.image
+              )
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL),
+          '[]'
+        ) as items,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', tu.id,
+              'status', tu.status,
+              'message', tu.message,
+              'location', tu.location,
+              'timestamp', tu.timestamp
+            ) ORDER BY tu.timestamp DESC
+          ) FILTER (WHERE tu.id IS NOT NULL),
+          '[]'
+        ) as "trackingUpdates",
+        json_build_object(
+          'name', u.name,
+          'email', u.email
+        ) as user
+      FROM "Order" o
+      LEFT JOIN "OrderItem" oi ON oi."orderId" = o.id
+      LEFT JOIN "Product" p ON p.id = oi."productId"
+      LEFT JOIN "TrackingUpdate" tu ON tu."orderId" = o.id
+      LEFT JOIN "User" u ON u.id = o."userId"
+      WHERE o.id = $1
+      GROUP BY o.id, u.name, u.email`,
+      [params.orderId]
+    );
+
+    if (result.rows.length > 0) {
+      order = result.rows[0];
+    }
+  } finally {
+    await pool.end();
+  }
 
   if (!order) {
     return (
