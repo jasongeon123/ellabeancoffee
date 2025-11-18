@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +15,13 @@ export async function GET(request: NextRequest) {
 
     const userId = (session.user as any).id;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        loyaltyPoints: true,
-      },
-    });
+    const user = await db.user.findUnique({ id: userId });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ points: user.loyaltyPoints });
+    return NextResponse.json({ points: user.loyaltyPoints || 0 });
   } catch (error) {
     console.error("Failed to fetch user points:", error);
     return NextResponse.json(

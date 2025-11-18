@@ -1,56 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const searchParams = req.nextUrl.searchParams;
     const query = searchParams.get("q");
 
     if (!query || query.length < 2) {
+      pool.end();
       return NextResponse.json({ products: [] });
     }
 
-    // Search products by name, description, category, origin, or tasting notes
-    const products = await prisma.product.findMany({
-      where: {
-        AND: [
-          { inStock: true },
-          {
-            OR: [
-              { name: { contains: query, mode: "insensitive" } },
-              { description: { contains: query, mode: "insensitive" } },
-              { category: { contains: query, mode: "insensitive" } },
-              { origin: { contains: query, mode: "insensitive" } },
-              { roastLevel: { contains: query, mode: "insensitive" } },
-              // Search in tasting notes array (PostgreSQL specific)
-              ...(query.length > 0 ? [{
-                tastingNotes: {
-                  hasSome: [query]
-                }
-              }] : [])
-            ],
-          },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        price: true,
-        image: true,
-        description: true,
-      },
-      take: 10,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // Search products by name, description, category, origin, or roast level
+    // Using ILIKE for case-insensitive search in PostgreSQL
+    const result = await pool.query(
+      `SELECT id, name, category, price, image, description
+       FROM "Product"
+       WHERE "inStock" = true
+       AND (
+         name ILIKE $1
+         OR description ILIKE $1
+         OR category ILIKE $1
+         OR origin ILIKE $1
+         OR "roastLevel" ILIKE $1
+       )
+       ORDER BY "createdAt" DESC
+       LIMIT 10`,
+      [`%${query}%`]
+    );
 
-    return NextResponse.json({ products });
+    pool.end();
+    return NextResponse.json({ products: result.rows });
   } catch (error) {
     console.error("Search error:", error);
+    pool.end();
     return NextResponse.json({ products: [] }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import crypto from "crypto";
 import { Resend } from "resend";
 
@@ -14,9 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await db.user.findUnique({ email });
 
     // Always return success even if user doesn't exist (security best practice)
     if (!user) {
@@ -33,12 +31,10 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     // Store reset request
-    await prisma.passwordReset.create({
-      data: {
-        email,
-        token,
-        expiresAt,
-      },
+    await db.passwordReset.create({
+      email,
+      token,
+      expiresAt,
     });
 
     // Send email if Resend is configured

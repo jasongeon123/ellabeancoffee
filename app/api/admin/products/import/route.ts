@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 
 interface ProductRow {
   id?: string;
@@ -84,10 +84,13 @@ function parseCSV(csvText: string): ProductRow[] {
 }
 
 export async function POST(req: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user || (session.user as any).role !== "admin") {
+      pool.end();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -95,6 +98,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File;
 
     if (!file) {
+      pool.end();
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
@@ -110,34 +114,38 @@ export async function POST(req: NextRequest) {
     // Process each product
     for (const productData of products) {
       try {
-        const { id, ...dataRaw } = productData;
-
-        // Remove undefined optional fields
-        const data: any = {};
-        Object.keys(dataRaw).forEach(key => {
-          if (dataRaw[key as keyof typeof dataRaw] !== undefined) {
-            data[key] = dataRaw[key as keyof typeof dataRaw];
-          }
-        });
+        const { id, ...data } = productData;
 
         if (id) {
           // Update existing product
-          await prisma.product.update({
-            where: { id },
-            data,
-          });
+          const fields = Object.keys(data);
+          const values = Object.values(data);
+          const setClause = fields.map((f, i) => `"${f}" = $${i + 1}`).join(', ');
+
+          await pool.query(
+            `UPDATE "Product" SET ${setClause}, "updatedAt" = NOW() WHERE id = $${fields.length + 1}`,
+            [...values, id]
+          );
           results.updated++;
         } else {
           // Create new product
-          await prisma.product.create({
-            data,
-          });
+          const fields = Object.keys(data);
+          const values = Object.values(data);
+          const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+          await pool.query(
+            `INSERT INTO "Product" (id, ${fields.map(f => `"${f}"`).join(', ')}, "createdAt", "updatedAt")
+             VALUES (gen_random_uuid()::text, ${placeholders}, NOW(), NOW())`,
+            values
+          );
           results.created++;
         }
       } catch (error: any) {
         results.errors.push(`${productData.name}: ${error.message}`);
       }
     }
+
+    pool.end();
 
     return NextResponse.json({
       success: true,
@@ -146,6 +154,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error importing products:", error);
+    pool.end();
     return NextResponse.json(
       { error: error.message || "Failed to import products" },
       { status: 500 }

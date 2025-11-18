@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
@@ -15,9 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Find valid reset request
-    const resetRequest = await prisma.passwordReset.findUnique({
-      where: { token },
-    });
+    const resetRequest = await db.passwordReset.findUnique({ token });
 
     if (!resetRequest) {
       return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 });
@@ -35,16 +33,16 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Update user password
-    await prisma.user.update({
-      where: { email: resetRequest.email },
-      data: { password: hashedPassword },
-    });
+    await db.user.update(
+      { email: resetRequest.email },
+      { password: hashedPassword }
+    );
 
     // Mark reset request as used
-    await prisma.passwordReset.update({
-      where: { token },
-      data: { used: true },
-    });
+    await db.passwordReset.update(
+      { token },
+      { used: true }
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

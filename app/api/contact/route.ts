@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getResendClient } from "@/lib/email";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
@@ -15,13 +15,11 @@ export async function POST(req: Request) {
     }
 
     // Save to database
-    await prisma.contactSubmission.create({
-      data: {
-        name,
-        email,
-        subject,
-        message,
-      },
+    await db.contactSubmission.create({
+      name,
+      email,
+      subject,
+      message,
     });
 
     // Send email using Resend

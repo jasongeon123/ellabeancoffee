@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const { amount, subtotal, discount, pointsUsed, couponCode, userId, items, shippingAddress, shippingCost, tax } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
+      pool.end();
       return NextResponse.json({ error: "Invalid items" }, { status: 400 });
     }
 
     // Validate items and ensure prices match database
     const productIds = items.map((item: any) => item.productId);
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
-    });
+    const result = await pool.query(
+      'SELECT * FROM "Product" WHERE id = ANY($1::text[])',
+      [productIds]
+    );
+    const products = result.rows;
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -22,12 +27,14 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       const product = productMap.get(item.productId);
       if (!product) {
+        pool.end();
         return NextResponse.json(
           { error: `Product ${item.productId} not found` },
           { status: 404 }
         );
       }
       if (!product.inStock) {
+        pool.end();
         return NextResponse.json(
           { error: `${product.name} is out of stock` },
           { status: 400 }
@@ -82,16 +89,18 @@ export async function POST(request: NextRequest) {
     if (userId) {
       metadata.userId = userId;
       // Get cart ID if authenticated user
-      const cart = await prisma.cart.findUnique({
-        where: { userId },
-        select: { id: true },
-      });
-      if (cart) {
-        metadata.cartId = cart.id;
+      const cartResult = await pool.query(
+        'SELECT id FROM "Cart" WHERE "userId" = $1 LIMIT 1',
+        [userId]
+      );
+      if (cartResult.rows.length > 0) {
+        metadata.cartId = cartResult.rows[0].id;
       }
     } else {
       metadata.guest = "true";
     }
+
+    pool.end();
 
     const stripe = getStripeClient();
     if (!stripe) {
@@ -113,6 +122,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error: any) {
     console.error("Payment Intent Error:", error);
+    pool.end();
     return NextResponse.json(
       { error: error.message || "Failed to create payment intent" },
       { status: 500 }

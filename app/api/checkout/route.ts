@@ -1,43 +1,64 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 import { getStripeClient } from "@/lib/stripe";
 
 export async function POST(req: Request) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user) {
+      pool.end();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userId = (session.user as any).id;
 
-    // Get user's cart
-    const cart = await prisma.cart.findUnique({
-      where: { userId },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
-    });
+    // Get user's cart with items and products
+    const cartResult = await pool.query(
+      `SELECT c.id as cart_id,
+        json_agg(
+          json_build_object(
+            'id', ci.id,
+            'quantity', ci.quantity,
+            'product', json_build_object(
+              'id', p.id,
+              'name', p.name,
+              'description', p.description,
+              'price', p.price,
+              'image', p.image
+            )
+          )
+        ) as items
+       FROM "Cart" c
+       LEFT JOIN "CartItem" ci ON c.id = ci."cartId"
+       LEFT JOIN "Product" p ON ci."productId" = p.id
+       WHERE c."userId" = $1
+       GROUP BY c.id`,
+      [userId]
+    );
 
-    if (!cart || cart.items.length === 0) {
+    if (cartResult.rows.length === 0 || !cartResult.rows[0].items || cartResult.rows[0].items[0].id === null) {
+      pool.end();
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
+    const cart = {
+      id: cartResult.rows[0].cart_id,
+      items: cartResult.rows[0].items
+    };
+
     // Calculate total
     const total = cart.items.reduce(
-      (sum, item) => sum + item.product.price * item.quantity,
+      (sum: number, item: any) => sum + item.product.price * item.quantity,
       0
     );
 
     // Create line items for Stripe
-    const lineItems = cart.items.map((item) => ({
+    const lineItems = cart.items.map((item: any) => ({
       price_data: {
         currency: "usd",
         product_data: {
@@ -49,6 +70,8 @@ export async function POST(req: Request) {
       },
       quantity: item.quantity,
     }));
+
+    pool.end();
 
     // Create Stripe checkout session
     const stripe = getStripeClient();
@@ -74,6 +97,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ sessionId: stripeSession.id, url: stripeSession.url });
   } catch (error: any) {
     console.error("Checkout error:", error);
+    pool.end();
     return NextResponse.json(
       { error: error.message || "Failed to create checkout session" },
       { status: 500 }

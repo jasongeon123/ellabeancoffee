@@ -1,44 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 import { getResendClient } from "@/lib/email";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user || (session.user as any).role !== "admin") {
+      pool.end();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { status } = await request.json();
 
     if (!["pending", "completed", "cancelled"].includes(status)) {
+      pool.end();
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const order = await prisma.order.update({
-      where: { id: params.orderId },
-      data: { status },
-      include: {
-        user: true,
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
-    });
+    // Update order status
+    await pool.query(
+      'UPDATE "Order" SET status = $1, "updatedAt" = NOW() WHERE id = $2',
+      [status, params.orderId]
+    );
+
+    // Fetch updated order with all details
+    const orderResult = await pool.query(
+      `SELECT o.*,
+        json_build_object('name', u.name, 'email', u.email) as user,
+        json_agg(
+          json_build_object(
+            'id', oi.id,
+            'quantity', oi.quantity,
+            'price', oi.price,
+            'product', json_build_object(
+              'id', p.id,
+              'name', p.name,
+              'image', p.image,
+              'price', p.price
+            )
+          )
+        ) as items
+       FROM "Order" o
+       LEFT JOIN "User" u ON o."userId" = u.id
+       LEFT JOIN "OrderItem" oi ON o.id = oi."orderId"
+       LEFT JOIN "Product" p ON oi."productId" = p.id
+       WHERE o.id = $1
+       GROUP BY o.id, u.name, u.email`,
+      [params.orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      pool.end();
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    const order = orderResult.rows[0];
+
+    pool.end();
 
     // Send email notification if order is completed
     if (status === "completed" && process.env.RESEND_API_KEY) {
       const itemsList = order.items
         .map(
-          (item) =>
+          (item: any) =>
             `<li>${item.quantity}× ${item.product.name} - $${(
               item.price * item.quantity
             ).toFixed(2)}</li>`
@@ -101,6 +133,7 @@ export async function PATCH(
     return NextResponse.json(order);
   } catch (error) {
     console.error("Failed to update order status:", error);
+    pool.end();
     return NextResponse.json(
       { error: "Failed to update order status" },
       { status: 500 }

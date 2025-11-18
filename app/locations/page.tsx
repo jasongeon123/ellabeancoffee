@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export default async function LocationsPage() {
   let locations: any[] = [];
@@ -6,10 +6,7 @@ export default async function LocationsPage() {
   try {
     // Skip database query if DATABASE_URL is not available (e.g., in CI)
     if (process.env.DATABASE_URL) {
-      locations = await prisma.location.findMany({
-        where: { active: true },
-        orderBy: { date: "asc" },
-      });
+      locations = await db.location.findMany({ active: true }, { date: "asc" });
     }
   } catch (error) {
     console.warn('Failed to fetch locations:', error);

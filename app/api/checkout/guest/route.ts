@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 import { getStripeClient } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const { items } = await request.json();
 
     if (!Array.isArray(items) || items.length === 0) {
+      pool.end();
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
     // Fetch product details from database to ensure prices are accurate
     const productIds = items.map((item: any) => item.productId);
-    const products = await prisma.product.findMany({
-      where: {
-        id: {
-          in: productIds,
-        },
-      },
-    });
+    const result = await pool.query(
+      'SELECT * FROM "Product" WHERE id = ANY($1::text[])',
+      [productIds]
+    );
+    const products = result.rows;
 
     // Validate all products exist and are in stock
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -26,18 +27,22 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       const product = productMap.get(item.productId);
       if (!product) {
+        pool.end();
         return NextResponse.json(
           { error: `Product ${item.productId} not found` },
           { status: 404 }
         );
       }
       if (!product.inStock) {
+        pool.end();
         return NextResponse.json(
           { error: `${product.name} is out of stock` },
           { status: 400 }
         );
       }
     }
+
+    pool.end();
 
     // Calculate total from database prices (security - don't trust client)
     const total = items.reduce((sum, item) => {
@@ -99,6 +104,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Guest checkout error:", error);
+    pool.end();
     return NextResponse.json(
       { error: error.message || "Failed to create checkout session" },
       { status: 500 }

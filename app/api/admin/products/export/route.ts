@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user || (session.user as any).role !== "admin") {
+      pool.end();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get all products
-    const products = await prisma.product.findMany({
-      orderBy: { createdAt: "asc" },
-    });
+    const result = await pool.query(
+      'SELECT * FROM "Product" ORDER BY "createdAt" ASC'
+    );
+    const products = result.rows;
 
     // Create CSV header
     const headers = [
@@ -59,6 +63,8 @@ export async function GET(req: NextRequest) {
 
     const csv = csvRows.join("\n");
 
+    pool.end();
+
     // Return CSV with proper headers
     return new NextResponse(csv, {
       status: 200,
@@ -69,6 +75,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error exporting products:", error);
+    pool.end();
     return NextResponse.json(
       { error: "Failed to export products" },
       { status: 500 }
