@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -12,10 +12,13 @@ const passwordSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
+      await pool.end();
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -26,6 +29,7 @@ export async function POST(request: NextRequest) {
     const validation = passwordSchema.safeParse(body);
 
     if (!validation.success) {
+      await pool.end();
       return NextResponse.json(
         { error: validation.error.errors[0].message },
         { status: 400 }
@@ -36,6 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Check if new passwords match
     if (newPassword !== confirmPassword) {
+      await pool.end();
       return NextResponse.json(
         { error: "New passwords do not match" },
         { status: 400 }
@@ -43,19 +48,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
+    const result = await pool.query(
+      `SELECT * FROM "User" WHERE email = $1`,
+      [session.user.email]
+    );
 
-    if (!user) {
+    if (result.rows.length === 0) {
+      await pool.end();
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       );
     }
 
+    const user = result.rows[0];
+
     // Check if user has a password (OAuth users don't)
     if (!user.password) {
+      await pool.end();
       return NextResponse.json(
         { error: "Cannot change password for OAuth accounts" },
         { status: 400 }
@@ -65,6 +75,7 @@ export async function POST(request: NextRequest) {
     // Verify current password
     const isValidPassword = await bcrypt.compare(currentPassword, user.password);
     if (!isValidPassword) {
+      await pool.end();
       return NextResponse.json(
         { error: "Current password is incorrect" },
         { status: 400 }
@@ -75,17 +86,19 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    await prisma.user.update({
-      where: { email: session.user.email },
-      data: { password: hashedPassword },
-    });
+    await pool.query(
+      `UPDATE "User" SET password = $1, "updatedAt" = NOW() WHERE email = $2`,
+      [hashedPassword, session.user.email]
+    );
 
+    await pool.end();
     return NextResponse.json(
       { message: "Password changed successfully" },
       { status: 200 }
     );
   } catch (error) {
     console.error("Password change error:", error);
+    await pool.end();
     return NextResponse.json(
       { error: "Failed to change password" },
       { status: 500 }

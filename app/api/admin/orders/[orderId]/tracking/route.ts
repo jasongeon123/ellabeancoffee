@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 import { addTrackingUpdate, updateOrderTracking } from "@/lib/orderUtils";
 import { sendShippingNotificationEmail, sendOrderStatusUpdateEmail } from "@/lib/email";
 
@@ -9,10 +9,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user || (session.user as any).role !== "admin") {
+      await pool.end();
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -48,29 +51,35 @@ export async function PATCH(
 
     // Send email notification based on status change
     try {
-      const order = await prisma.order.findUnique({
-        where: { id: params.orderId },
-        include: {
-          items: {
-            include: {
-              product: true,
-            },
-          },
-          user: {
-            select: {
-              email: true,
-              name: true,
-            },
-          },
-        },
-      });
+      const orderResult = await pool.query(
+        `SELECT
+          o.*,
+          json_build_object('email', u.email, 'name', u.name) as user,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'name', p.name,
+                'quantity', oi.quantity
+              )
+            ) FILTER (WHERE oi.id IS NOT NULL),
+            '[]'
+          ) as items
+        FROM "Order" o
+        LEFT JOIN "User" u ON o."userId" = u.id
+        LEFT JOIN "OrderItem" oi ON o.id = oi."orderId"
+        LEFT JOIN "Product" p ON oi."productId" = p.id
+        WHERE o.id = $1
+        GROUP BY o.id, u.email, u.name`,
+        [params.orderId]
+      );
 
-      if (order) {
+      if (orderResult.rows.length > 0) {
+        const order = orderResult.rows[0];
         const customerEmail = order.user?.email || order.guestEmail;
 
         if (customerEmail) {
-          const orderItems = order.items.map(item => ({
-            name: item.product.name,
+          const orderItems = order.items.map((item: any) => ({
+            name: item.name,
             quantity: item.quantity,
           }));
 
@@ -99,9 +108,11 @@ export async function PATCH(
       console.error("Failed to send email notification:", emailError);
     }
 
+    await pool.end();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error updating order tracking:", error);
+    await pool.end();
     return NextResponse.json(
       { error: "Failed to update tracking" },
       { status: 500 }
