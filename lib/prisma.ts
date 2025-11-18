@@ -10,13 +10,24 @@ const prismaClientSingleton = () => {
   }
 
   // In production (Vercel), use Neon serverless adapter
-  const connectionString = `${process.env.DATABASE_URL}`;
-  const adapter = new PrismaNeon({ connectionString });
+  try {
+    const connectionString = `${process.env.DATABASE_URL}`;
+    if (!connectionString || connectionString === 'undefined') {
+      console.error('[Prisma] DATABASE_URL is not set!');
+      throw new Error('DATABASE_URL environment variable is required');
+    }
 
-  return new PrismaClient({
-    adapter,
-    log: ['error'],
-  });
+    console.log('[Prisma] Initializing Neon adapter for production');
+    const adapter = new PrismaNeon({ connectionString });
+
+    return new PrismaClient({
+      adapter,
+      log: ['error', 'warn'],
+    });
+  } catch (error) {
+    console.error('[Prisma] Failed to initialize with Neon adapter:', error);
+    throw error;
+  }
 };
 
 declare global {

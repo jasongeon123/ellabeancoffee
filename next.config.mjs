@@ -7,7 +7,7 @@ const nextConfig = {
     pagesBufferLength: 2,
   },
   // Exclude Prisma from webpack bundling (required for Vercel deployment)
-  serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+  serverComponentsExternalPackages: ['@prisma/client', 'prisma', '@prisma/adapter-neon', '@neondatabase/serverless'],
   images: {
     remotePatterns: [],
     // Limit image sizes to prevent memory exhaustion attacks
