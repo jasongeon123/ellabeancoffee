@@ -59,15 +59,23 @@ export const authOptions: NextAuthOptions = {
 
           if (existingUser) {
             // Update existing user with OAuth info if needed
+            // Only update if provider is different or missing
             if (!existingUser.provider || existingUser.provider !== "google") {
-              await db.user.updateOAuth({
-                email: user.email!,
-                provider: "google",
-                providerId: account.providerAccountId,
-                image: user.image,
-                name: user.name || existingUser.name,
-              });
+              try {
+                await db.user.updateOAuth({
+                  email: user.email!,
+                  provider: "google",
+                  providerId: account.providerAccountId,
+                  image: user.image,
+                  name: user.name || existingUser.name,
+                });
+              } catch (updateError) {
+                // Log update error but allow sign in to proceed
+                console.error("Error updating OAuth info (non-critical):", updateError);
+              }
             }
+            // Always allow sign in for existing users
+            return true;
           } else {
             // Create new user from Google OAuth
             await db.user.create({
@@ -78,10 +86,22 @@ export const authOptions: NextAuthOptions = {
               providerId: account.providerAccountId,
               role: "user",
             });
+            return true;
           }
-          return true;
         } catch (error) {
           console.error("Error during Google sign in:", error);
+
+          // If user already exists, allow sign in anyway
+          // This handles race conditions and duplicate key errors
+          if (error && typeof error === 'object' && 'code' in error) {
+            const pgError = error as { code?: string };
+            if (pgError.code === '23505') { // Unique constraint violation
+              console.log("User already exists (duplicate key), allowing sign in");
+              return true;
+            }
+          }
+
+          // For other errors, still deny access
           return false;
         }
       }
