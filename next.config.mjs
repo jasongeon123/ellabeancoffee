@@ -6,6 +6,10 @@ const nextConfig = {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 2,
   },
+  // Exclude Prisma from webpack bundling (required for Vercel deployment)
+  serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+  // Use standalone output for better Vercel deployment
+  output: 'standalone',
   images: {
     remotePatterns: [],
     // Limit image sizes to prevent memory exhaustion attacks
@@ -50,6 +54,12 @@ const nextConfig = {
       config.optimization.usedExports = true;
       config.optimization.sideEffects = false;
     }
+
+    // Externalize Prisma for server bundles (required for Vercel)
+    if (isServer) {
+      config.externals = [...(config.externals || []), '@prisma/client', 'prisma'];
+    }
+
     return config;
   },
 };
