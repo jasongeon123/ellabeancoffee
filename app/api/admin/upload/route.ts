@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || (session.user as any).role !== "admin") {
@@ -46,16 +47,12 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer);
 
     // Save to database
-    const image = await prisma.image.create({
-      data: {
-        filename,
-        originalName: file.name,
-        path: `/uploads/${filename}`,
-        size: file.size,
-        mimeType: file.type,
-        uploadedBy: (session.user as any).id,
-      },
-    });
+    const imageResult = await pool.query(
+      'INSERT INTO "Image" (filename, "originalName", path, size, "mimeType", "uploadedBy") VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [filename, file.name, `/uploads/${filename}`, file.size, file.type, (session.user as any).id]
+    );
+
+    const image = imageResult.rows[0];
 
     return NextResponse.json({
       success: true,
@@ -67,25 +64,30 @@ export async function POST(request: NextRequest) {
       { error: "Failed to upload image" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }
 
 export async function GET() {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || (session.user as any).role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const images = await prisma.image.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+    const imagesResult = await pool.query(
+      'SELECT * FROM "Image" ORDER BY "createdAt" DESC'
+    );
 
-    return NextResponse.json(images);
+    return NextResponse.json(imagesResult.rows);
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch images" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { prisma } from '@/lib/prisma';
+import { Pool } from '@neondatabase/serverless';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ellabeancoffee.com';
@@ -10,15 +10,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     // Skip database queries if DATABASE_URL is not available (e.g., in CI)
     if (process.env.DATABASE_URL) {
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
       // Fetch all products
-      products = await prisma.product.findMany({
-        select: { id: true, slug: true, updatedAt: true },
-      });
+      const productsResult = await pool.query(
+        'SELECT id, slug, "updatedAt" FROM "Product"'
+      );
+      products = productsResult.rows;
 
       // Fetch all locations
-      locations = await prisma.location.findMany({
-        select: { id: true, updatedAt: true },
-      });
+      const locationsResult = await pool.query(
+        'SELECT id, "updatedAt" FROM "Location"'
+      );
+      locations = locationsResult.rows;
+
+      await pool.end();
     }
   } catch (error) {
     console.warn('Failed to fetch data for sitemap:', error);

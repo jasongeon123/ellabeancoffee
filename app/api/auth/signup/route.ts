@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 
 // Input validation functions
@@ -23,6 +23,7 @@ function sanitizeString(str: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     const body = await request.json();
 
@@ -71,11 +72,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: sanitizedEmail },
-    });
+    const existingUserResult = await pool.query(
+      'SELECT * FROM "User" WHERE email = $1',
+      [sanitizedEmail]
+    );
 
-    if (existingUser) {
+    if (existingUserResult.rows.length > 0) {
       return NextResponse.json(
         { error: "Email already registered" },
         { status: 400 }
@@ -86,14 +88,12 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        name: sanitizedName,
-        email: sanitizedEmail,
-        password: hashedPassword,
-        role: "user",
-      },
-    });
+    const userResult = await pool.query(
+      'INSERT INTO "User" (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name',
+      [sanitizedName, sanitizedEmail, hashedPassword, "user"]
+    );
+
+    const user = userResult.rows[0];
 
     return NextResponse.json({
       user: {
@@ -108,5 +108,7 @@ export async function POST(request: NextRequest) {
       { error: "Failed to create user" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }

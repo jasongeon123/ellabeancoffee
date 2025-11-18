@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 import { redirect } from "next/navigation";
 import LocationForm from "@/components/LocationForm";
 import DeleteLocationButton from "@/components/DeleteLocationButton";
@@ -14,9 +14,13 @@ export default async function AdminLocations() {
     redirect("/");
   }
 
-  const locations = await prisma.location.findMany({
-    orderBy: { date: "desc" },
-  });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const locationsResult = await pool.query(
+    'SELECT * FROM "Location" ORDER BY date DESC'
+  );
+  await pool.end();
+
+  const locations = locationsResult.rows;
 
   return (
     <div className="min-h-screen bg-coffee-50 py-12">

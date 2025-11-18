@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Pool } from "@neondatabase/serverless";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ itemId: string }> }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -16,10 +17,10 @@ export async function PATCH(
     const { quantity } = await request.json();
     const { itemId } = await params;
 
-    await prisma.cartItem.update({
-      where: { id: itemId },
-      data: { quantity },
-    });
+    await pool.query(
+      'UPDATE "CartItem" SET quantity = $1 WHERE id = $2',
+      [quantity, itemId]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -27,6 +28,8 @@ export async function PATCH(
       { error: "Failed to update item" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }
 
@@ -34,6 +37,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ itemId: string }> }
 ) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -42,9 +46,10 @@ export async function DELETE(
 
     const { itemId } = await params;
 
-    await prisma.cartItem.delete({
-      where: { id: itemId },
-    });
+    await pool.query(
+      'DELETE FROM "CartItem" WHERE id = $1',
+      [itemId]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -52,5 +57,7 @@ export async function DELETE(
       { error: "Failed to delete item" },
       { status: 500 }
     );
+  } finally {
+    await pool.end();
   }
 }
