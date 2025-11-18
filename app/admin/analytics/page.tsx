@@ -234,7 +234,7 @@ export default async function AnalyticsPage() {
                         <div
                           className="h-full bg-green-500"
                           style={{
-                            width: `${(revenue / Math.max(...Object.values(revenueByDate))) * 100}%`,
+                            width: `${(revenue / Math.max(...(Object.values(revenueByDate) as number[]))) * 100}%`,
                           }}
                         />
                       </div>

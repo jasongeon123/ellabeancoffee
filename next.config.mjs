@@ -6,8 +6,6 @@ const nextConfig = {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 2,
   },
-  // Exclude Prisma from webpack bundling (required for Vercel deployment)
-  serverComponentsExternalPackages: ['@prisma/client', 'prisma', '@prisma/adapter-neon', '@neondatabase/serverless'],
   images: {
     remotePatterns: [],
     // Limit image sizes to prevent memory exhaustion attacks
@@ -37,7 +35,6 @@ const nextConfig = {
       '@stripe/react-stripe-js',
       '@stripe/stripe-js',
       'next-auth',
-      '@prisma/client',
       'react-icons',
     ],
     // Enable TypeScript plugin optimizations
@@ -52,17 +49,6 @@ const nextConfig = {
       config.optimization.usedExports = true;
       config.optimization.sideEffects = false;
     }
-
-    // Force Prisma and Neon packages to be external (not bundled)
-    if (isServer) {
-      config.externals = config.externals || [];
-      config.externals.push(
-        '@prisma/client',
-        '@prisma/adapter-neon',
-        '@neondatabase/serverless'
-      );
-    }
-
     return config;
   },
 };
