@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 
 export default async function TestimonialsSection() {
@@ -7,14 +7,12 @@ export default async function TestimonialsSection() {
   try {
     // Skip database query if DATABASE_URL is not available (e.g., in CI)
     if (process.env.DATABASE_URL) {
-      // Get approved testimonials (at least 5 required)
-      testimonials = await prisma.testimonial.findMany({
-        where: { approved: true },
-        orderBy: [
-          { featured: "desc" }, // Featured testimonials first
-          { createdAt: "desc" },
-        ],
-      });
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const result = await pool.query(
+        'SELECT * FROM "Testimonial" WHERE approved = true ORDER BY featured DESC, "createdAt" DESC'
+      );
+      testimonials = result.rows;
+      pool.end();
     }
   } catch (error) {
     console.warn('Failed to fetch testimonials:', error);

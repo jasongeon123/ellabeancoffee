@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { Pool } from '@neondatabase/serverless';
 
 export default async function BulletinBoard() {
   let locations: any[] = [];
@@ -6,11 +6,12 @@ export default async function BulletinBoard() {
   try {
     // Skip database query if DATABASE_URL is not available (e.g., in CI)
     if (process.env.DATABASE_URL) {
-      locations = await prisma.location.findMany({
-        where: { active: true },
-        orderBy: { date: "asc" },
-        take: 3,
-      });
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const result = await pool.query(
+        'SELECT * FROM "Location" WHERE active = true ORDER BY date ASC LIMIT 3'
+      );
+      locations = result.rows;
+      pool.end();
     }
   } catch (error) {
     console.warn('Failed to fetch locations for bulletin board:', error);
