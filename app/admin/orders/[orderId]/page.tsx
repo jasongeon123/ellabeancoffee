@@ -147,7 +147,7 @@ export default async function AdminOrderDetailsPage({
                 Order Items
               </h2>
               <div className="space-y-3">
-                {order.items.map((item) => (
+                {order.items.map((item: any) => (
                   <div
                     key={item.id}
                     className="flex justify-between items-center py-3 border-b border-coffee-100 last:border-0"
@@ -186,7 +186,7 @@ export default async function AdminOrderDetailsPage({
               </h2>
               {order.trackingUpdates && order.trackingUpdates.length > 0 ? (
                 <div className="space-y-4">
-                  {order.trackingUpdates.map((update) => (
+                  {order.trackingUpdates.map((update: any) => (
                     <div
                       key={update.id}
                       className="flex gap-4 pb-4 border-b border-coffee-100 last:border-0"

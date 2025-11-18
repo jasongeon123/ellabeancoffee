@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       trackingCarrier: order.trackingCarrier,
       trackingNumber: order.trackingNumber,
       trackingUrl: order.trackingUrl,
-      items: order.items.map((item) => ({
+      items: order.items.map((item: any) => ({
         id: item.id,
         quantity: item.quantity,
         price: item.price,

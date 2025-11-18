@@ -282,7 +282,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
                           <span className="text-sm font-medium text-coffee-900">Tasting Notes</span>
                         </div>
                         <div className="flex flex-wrap gap-2 pl-7">
-                          {product.tastingNotes.map((note, index) => (
+                          {product.tastingNotes.map((note: string, index: number) => (
                             <span
                               key={index}
                               className="px-3 py-1 bg-amber-50 text-amber-900 text-sm rounded-full border border-amber-200"
@@ -303,7 +303,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
                           <span className="text-sm font-medium text-coffee-900">Recommended Brewing Methods</span>
                         </div>
                         <div className="flex flex-wrap gap-2 pl-7">
-                          {product.brewingMethods.map((method, index) => (
+                          {product.brewingMethods.map((method: string, index: number) => (
                             <span
                               key={index}
                               className="px-3 py-1 bg-coffee-50 text-coffee-900 text-sm rounded-full border border-coffee-200"
