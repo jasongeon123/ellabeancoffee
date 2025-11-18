@@ -52,6 +52,17 @@ const nextConfig = {
       config.optimization.usedExports = true;
       config.optimization.sideEffects = false;
     }
+
+    // Force Prisma and Neon packages to be external (not bundled)
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push(
+        '@prisma/client',
+        '@prisma/adapter-neon',
+        '@neondatabase/serverless'
+      );
+    }
+
     return config;
   },
 };
