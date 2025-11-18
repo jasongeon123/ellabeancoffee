@@ -1,8 +1,25 @@
 import { PrismaClient } from '@prisma/client';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import ws from 'ws';
 
 const prismaClientSingleton = () => {
+  // In development, use standard Prisma Client
+  if (process.env.NODE_ENV === 'development') {
+    return new PrismaClient({
+      log: ['query', 'error', 'warn'],
+    });
+  }
+
+  // In production (Vercel), use Neon serverless adapter
+  neonConfig.webSocketConstructor = ws;
+  const connectionString = process.env.DATABASE_URL;
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaNeon(pool);
+
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    adapter,
+    log: ['error'],
   });
 };
 
