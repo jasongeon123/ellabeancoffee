@@ -1,37 +1,45 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 
-const prismaClientSingleton = () => {
-  const connectionString = `${process.env.DATABASE_URL}`;
+declare global {
+  var prismaGlobal: PrismaClient | undefined;
+}
 
-  // Use Neon adapter if connection string has pooler
-  // This works both locally and on Vercel
-  if (connectionString && connectionString.includes('-pooler')) {
+const createPrismaClient = (): PrismaClient => {
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+
+  // Always use Neon adapter when pooler URL is present
+  if (connectionString.includes('-pooler')) {
+    console.log('[Prisma] Creating client with Neon serverless adapter');
     try {
-      console.log('[Prisma] Using Neon serverless adapter');
       const adapter = new PrismaNeon({ connectionString });
-
-      return new PrismaClient({
+      const client = new PrismaClient({
         adapter,
-        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error', 'warn'],
       });
+      console.log('[Prisma] Successfully created client with Neon adapter');
+      return client;
     } catch (error) {
-      console.error('[Prisma] Failed to initialize with Neon adapter:', error);
+      console.error('[Prisma] Failed to create Neon adapter:', error);
       throw error;
     }
   }
 
-  // Fallback to standard Prisma Client (for local dev without pooler)
-  console.log('[Prisma] Using standard Prisma Client');
+  // Fallback for local development without pooler
+  console.log('[Prisma] Creating standard Prisma Client');
   return new PrismaClient({
     log: ['query', 'error', 'warn'],
   });
 };
 
-declare global {
-  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
+const prisma = global.prismaGlobal ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  global.prismaGlobal = prisma;
 }
 
-export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
-
-if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma;
+export { prisma };
