@@ -21,9 +21,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await db.user.findUnique({
-          where: { email: credentials.email }
-        });
+        const user = await db.user.findUnique({ email: credentials.email });
 
         if (!user) {
           return null;
@@ -57,34 +55,28 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google") {
         try {
           // Check if user exists
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email! }
-          });
+          const existingUser = await db.user.findUnique({ email: user.email! });
 
           if (existingUser) {
             // Update existing user with OAuth info if needed
             if (!existingUser.provider || existingUser.provider !== "google") {
-              await prisma.user.update({
-                where: { email: user.email! },
-                data: {
-                  provider: "google",
-                  providerId: account.providerAccountId,
-                  image: user.image,
-                  name: user.name || existingUser.name,
-                }
+              await db.user.updateOAuth({
+                email: user.email!,
+                provider: "google",
+                providerId: account.providerAccountId,
+                image: user.image,
+                name: user.name || existingUser.name,
               });
             }
           } else {
             // Create new user from Google OAuth
-            await prisma.user.create({
-              data: {
-                email: user.email!,
-                name: user.name,
-                image: user.image,
-                provider: "google",
-                providerId: account.providerAccountId,
-                role: "user",
-              }
+            await db.user.create({
+              email: user.email!,
+              name: user.name || null,
+              image: user.image,
+              provider: "google",
+              providerId: account.providerAccountId,
+              role: "user",
             });
           }
           return true;
@@ -102,9 +94,7 @@ export const authOptions: NextAuthOptions = {
       }
       // Fetch user role if not in token
       if (!token.role && token.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: token.email }
-        });
+        const dbUser = await db.user.findUnique({ email: token.email });
         if (dbUser) {
           token.role = dbUser.role;
           token.id = dbUser.id;

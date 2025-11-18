@@ -44,6 +44,14 @@ export const db = {
         [data.password, where.email]
       );
       return result.rows[0] || null;
+    },
+
+    async updateOAuth(data: { email: string; provider: string; providerId: string; image?: string | null; name: string }) {
+      const result = await pool.query(
+        'UPDATE "User" SET provider = $1, "providerId" = $2, image = $3, name = $4, "updatedAt" = NOW() WHERE email = $5 RETURNING *',
+        [data.provider, data.providerId, data.image, data.name, data.email]
+      );
+      return result.rows[0] || null;
     }
   },
 

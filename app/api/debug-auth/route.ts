@@ -14,9 +14,7 @@ export async function POST(req: NextRequest) {
     console.log("DATABASE_URL:", process.env.DATABASE_URL ? "SET" : "NOT SET");
 
     // Try to find user
-    const user = await db.user.findUnique({
-      where: { email }
-    });
+    const user = await db.user.findUnique({ email });
 
     console.log("User found:", user ? "YES" : "NO");
     if (user) {
