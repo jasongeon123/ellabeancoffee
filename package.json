@@ -17,7 +17,7 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
+    "@neondatabase/serverless": "^0.10.4",
     "@prisma/adapter-neon": "^6.19.0",
     "@prisma/client": "^6.19.0",
     "@stripe/react-stripe-js": "^5.3.0",
