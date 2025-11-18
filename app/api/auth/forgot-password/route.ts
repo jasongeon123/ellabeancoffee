@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
       try {
         await resend.emails.send({
-          from: "Ella Bean Coffee <noreply@ellabeancoffee.com>",
+          from: "Ella Bean Coffee <onboarding@resend.dev>",
           to: email,
           subject: "Reset Your Password",
           html: `
