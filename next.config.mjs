@@ -52,12 +52,6 @@ const nextConfig = {
       config.optimization.usedExports = true;
       config.optimization.sideEffects = false;
     }
-
-    // Externalize Prisma for server bundles (required for Vercel)
-    if (isServer) {
-      config.externals = [...(config.externals || []), '@prisma/client', 'prisma'];
-    }
-
     return config;
   },
 };
