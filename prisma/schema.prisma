@@ -350,6 +350,19 @@ model EmailChangeRequest {
   @@index([expiresAt])
 }
 
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String   // Email of user requesting reset
+  token     String   @unique // Secure random token
+  used      Boolean  @default(false) // Prevent token reuse
+  expiresAt DateTime // Token expires after 1 hour
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}
+
 model SubscriptionSettings {
   id                    String   @id @default(cuid())
   subscriptionsEnabled  Boolean  @default(true) // Master switch to enable/disable all subscriptions
