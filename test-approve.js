@@ -1,36 +1,38 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { Pool } = require('@neondatabase/serverless');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function main() {
-  // Get all testimonials
-  const testimonials = await prisma.testimonial.findMany();
-  console.log(`Found ${testimonials.length} testimonials\n`);
+  try {
+    // Get all testimonials
+    const testimonialsResult = await pool.query('SELECT * FROM "Testimonial"');
+    const testimonials = testimonialsResult.rows;
+    console.log(`Found ${testimonials.length} testimonials\n`);
 
-  // Approve all testimonials
-  const result = await prisma.testimonial.updateMany({
-    where: { approved: false },
-    data: { approved: true },
-  });
-  console.log(`✓ Approved ${result.count} testimonials\n`);
+    // Approve all testimonials
+    const approveResult = await pool.query(
+      'UPDATE "Testimonial" SET approved = true, "updatedAt" = NOW() WHERE approved = false'
+    );
+    console.log(`✓ Approved ${approveResult.rowCount} testimonials\n`);
 
-  // Mark first 2 as featured
-  const firstTwo = testimonials.slice(0, 2);
-  for (const t of firstTwo) {
-    await prisma.testimonial.update({
-      where: { id: t.id },
-      data: { featured: true },
-    });
-    console.log(`✓ Featured: ${t.name}`);
+    // Mark first 2 as featured
+    const firstTwo = testimonials.slice(0, 2);
+    for (const t of firstTwo) {
+      await pool.query(
+        'UPDATE "Testimonial" SET featured = true, "updatedAt" = NOW() WHERE id = $1',
+        [t.id]
+      );
+      console.log(`✓ Featured: ${t.name}`);
+    }
+
+    // Verify approved count
+    const approvedResult = await pool.query(
+      'SELECT COUNT(*) FROM "Testimonial" WHERE approved = true'
+    );
+    console.log(`\n✓ Total approved testimonials: ${approvedResult.rows[0].count}`);
+    console.log('✓ Homepage section should now be visible!\n');
+  } finally {
+    await pool.end();
   }
-
-  // Verify approved count
-  const approved = await prisma.testimonial.findMany({
-    where: { approved: true },
-  });
-  console.log(`\n✓ Total approved testimonials: ${approved.length}`);
-  console.log('✓ Homepage section should now be visible!\n');
 }
 
-main()
-  .catch((e) => console.error(e))
-  .finally(async () => await prisma.$disconnect());
+main().catch((e) => console.error(e));

@@ -1,23 +1,6 @@
-import { PrismaClient } from '@prisma/client';
-import { mockDeep, mockReset, DeepMockProxy } from 'vitest-mock-extended';
+// Test data generators for unit tests
+// Note: Prisma has been removed. These are plain TypeScript objects for testing.
 
-// Create a deep mock of PrismaClient
-export const prismaMock = mockDeep<PrismaClient>();
-
-// Export type for better TypeScript support
-export type PrismaMockClient = DeepMockProxy<PrismaClient>;
-
-// Reset all mocks before each test
-export function resetPrismaMock() {
-  mockReset(prismaMock);
-}
-
-// Mock Prisma client module
-vi.mock('@/lib/prisma', () => ({
-  prisma: prismaMock,
-}));
-
-// Sample test data generators
 export const mockUser = (overrides = {}) => ({
   id: 'user-123',
   email: 'test@example.com',
@@ -105,6 +88,21 @@ export const mockCartItem = (overrides = {}) => ({
   cartId: 'cart-123',
   productId: 'product-123',
   quantity: 1,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
+
+export const mockCoupon = (overrides = {}) => ({
+  id: 'coupon-123',
+  code: 'TEST10',
+  discountType: 'percentage',
+  discountValue: 10,
+  minPurchase: 0,
+  maxUses: 100,
+  usedCount: 0,
+  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  active: true,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
