@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { useCart } from "@/contexts/CartContext";
 import SignupPromptModal from "./SignupPromptModal";
 import { clearGuestCart } from "@/lib/guestCart";
@@ -106,12 +107,12 @@ export default function UnifiedCartPage() {
                 <p className="text-sm sm:text-base text-coffee-600 mb-6 sm:mb-8 font-light">
                   Looks like you haven't added any items yet
                 </p>
-                <a
+                <Link
                   href="/#products"
                   className="inline-block bg-coffee-900 text-white px-8 sm:px-10 py-3 sm:py-4 rounded-full hover:bg-coffee-800 transition-all duration-300 uppercase text-xs tracking-widest font-medium shadow-lg hover:shadow-xl hover:scale-105"
                 >
                   Start Shopping
-                </a>
+                </Link>
               </div>
             </div>
           ) : (
@@ -237,12 +238,12 @@ export default function UnifiedCartPage() {
                       : "Proceed to Checkout"}
                   </button>
 
-                  <a
+                  <Link
                     href="/#products"
                     className="block text-center text-coffee-600 hover:text-coffee-900 transition-colors font-light text-sm"
                   >
                     Continue Shopping
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>

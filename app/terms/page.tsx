@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-coffee-100 to-coffee-50 py-12 sm:py-16 md:py-24">
@@ -248,21 +250,21 @@ export default function TermsOfService() {
                 </p>
                 <p>
                   <strong>Website:</strong>{' '}
-                  <a href="/" className="text-coffee-700 hover:text-coffee-900 underline">
+                  <Link href="/" className="text-coffee-700 hover:text-coffee-900 underline">
                     ellabeancoffee.com
-                  </a>
+                  </Link>
                 </p>
               </div>
             </section>
           </div>
 
           <div className="mt-12 pt-8 border-t border-coffee-200">
-            <a
+            <Link
               href="/"
               className="inline-block bg-coffee-900 text-white px-8 py-3 rounded-full hover:bg-coffee-800 transition-all duration-300 uppercase text-xs tracking-widest font-medium shadow-lg hover:shadow-xl hover:scale-105"
             >
               Back to Home
-            </a>
+            </Link>
           </div>
         </div>
       </div>

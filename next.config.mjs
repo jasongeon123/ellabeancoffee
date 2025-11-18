@@ -37,19 +37,6 @@ const nextConfig = {
       'next-auth',
       'react-icons',
     ],
-    // Enable TypeScript plugin optimizations
-    typedRoutes: false,
-  },
-  // Enable SWC minification for better performance
-  swcMinify: true,
-  // Webpack configuration for bundle optimization
-  webpack: (config, { dev, isServer }) => {
-    if (!dev && !isServer) {
-      // Enable aggressive tree shaking in production
-      config.optimization.usedExports = true;
-      config.optimization.sideEffects = false;
-    }
-    return config;
   },
 };
 

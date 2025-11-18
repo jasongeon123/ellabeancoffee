@@ -161,12 +161,12 @@ export default async function AccountPage() {
                     </div>
                     <h3 className="text-xl font-light text-coffee-900 mb-2">No orders yet</h3>
                     <p className="text-coffee-600 font-light mb-6">Start shopping to see your order history here</p>
-                    <a
+                    <Link
                       href="/#products"
                       className="inline-block bg-coffee-900 text-white px-8 py-3 rounded-full hover:bg-coffee-800 transition-all duration-300 uppercase text-xs tracking-widest font-medium shadow-lg hover:shadow-xl hover:scale-105"
                     >
                       Browse Products
-                    </a>
+                    </Link>
                   </div>
                 ) : (
                   <div className="space-y-6">
