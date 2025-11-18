@@ -8,8 +8,6 @@ const nextConfig = {
   },
   // Exclude Prisma from webpack bundling (required for Vercel deployment)
   serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
-  // Use standalone output for better Vercel deployment
-  output: 'standalone',
   images: {
     remotePatterns: [],
     // Limit image sizes to prevent memory exhaustion attacks

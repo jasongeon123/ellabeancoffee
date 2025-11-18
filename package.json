@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:restart": "powershell -ExecutionPolicy Bypass -File ./scripts/safe-restart-dev.ps1",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "vercel-build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
