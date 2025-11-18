@@ -267,7 +267,7 @@ export default async function AnalyticsPage() {
                   >
                     <span className="text-coffee-900 font-mono">{path}</span>
                     <span className="text-coffee-700 font-medium">
-                      {count} views
+                      {count as number} views
                     </span>
                   </div>
                 ))}
