@@ -72,8 +72,8 @@ export const authOptions: NextAuthOptions = {
             // Create new user from Google OAuth
             await db.user.create({
               email: user.email!,
-              name: user.name || null,
-              image: user.image,
+              name: user.name || undefined,
+              image: user.image || undefined,
               provider: "google",
               providerId: account.providerAccountId,
               role: "user",
